@@ -1,5 +1,6 @@
 package poo.melitoh.boh;
 
+import com.googlecode.lanterna.SGR;
 import com.googlecode.lanterna.TerminalSize;
 import com.googlecode.lanterna.TextColor;
 import com.googlecode.lanterna.graphics.TextGraphics;
@@ -9,39 +10,42 @@ import com.googlecode.lanterna.screen.Screen;
 import com.googlecode.lanterna.screen.TerminalScreen;
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory;
 import com.googlecode.lanterna.terminal.Terminal;
+import com.googlecode.lanterna.terminal.swing.SwingTerminalFontConfiguration;
+import java.awt.Font;
 
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Proof of Concept (PoC) para o Projeto Boh em Java. Versão simplificada usando
- * apenas Screen e TextGraphics (sem GUI2).
- */
-public class Boh {
+public class Proto {
 
         private static final List<String> IDLE_FACES = Arrays.asList("[ ▀ ¸ ▀]",
                         "[ ▀ ° ▀]", "[ ▀ ■ ▀]", "[ ▀ ─ ▀]", "[ ▀ ~ ▀]", "[ ▀ ▄ ▀]",
                         "[ ▀ ¬ ▀]", "[ ▀ · ▀]", "[ ▀ _ ▀]");
 
-        // Estado compartilhado para renderização
         private static volatile String currentFace = IDLE_FACES.get(0);
         private static volatile String currentSpeech = "";
 
+        private static void putBold(TextGraphics tg, int x, int y, String text) {
+                tg.putString(x, y, text, SGR.BOLD);
+        }
+
         public static void main(String[] args) {
                 try {
-                        // 1. Configuração do Terminal e Screen
-                        Terminal terminal = new DefaultTerminalFactory().createTerminal();
+                        DefaultTerminalFactory factory = new DefaultTerminalFactory();
+                        Font font = new Font("Monospaced", Font.PLAIN, 16);
+                        SwingTerminalFontConfiguration fontConfig = SwingTerminalFontConfiguration
+                                        .newInstance(font);
+                        factory.setTerminalEmulatorFontConfiguration(fontConfig);
+                        Terminal terminal = factory.createTerminal();
+                        @SuppressWarnings("resource")
                         Screen screen = new TerminalScreen(terminal);
                         screen.startScreen();
-                        screen.setCursorPosition(null); // Esconde o cursor
+                        screen.setCursorPosition(null);
 
-                        // Controle de execução
                         AtomicBoolean running = new AtomicBoolean(true);
 
-                        // 2. Thread de Animação Facial
-                        // Atualiza a variável 'currentFace' periodicamente
                         new Thread(() -> {
                                 int index = 0;
                                 while (running.get()) {
@@ -56,12 +60,9 @@ public class Boh {
                                 }
                         }).start();
 
-                        // 3. Thread do Typewriter Effect
-                        // Atualiza a variável 'currentSpeech' caractere por
-                        // caractere (Multilinhas)
                         new Thread(() -> {
                                 try {
-                                        Thread.sleep(1000); // Aguarda iniciar
+                                        Thread.sleep(1000);
                                 } catch (InterruptedException e) {
                                 }
 
@@ -74,7 +75,7 @@ public class Boh {
                                                 break;
 
                                         StringBuilder buffer = new StringBuilder();
-                                        currentSpeech = ""; // Limpa visualmente
+                                        currentSpeech = "";
 
                                         for (char c : fala.toCharArray()) {
                                                 if (!running.get())
@@ -90,19 +91,15 @@ public class Boh {
                                         }
 
                                         try {
-                                                Thread.sleep(1500); // Pausa
-                                                                    // para
-                                                                    // leitura
+                                                Thread.sleep(1500);
                                         } catch (InterruptedException e) {
                                         }
                                 }
                         }).start();
 
-                        // 4. Loop Principal de Renderização (Game Loop)
                         TextGraphics tg = screen.newTextGraphics();
 
                         while (running.get()) {
-                                // Input handling
                                 KeyStroke key = screen.pollInput();
                                 if (key != null && (key.getKeyType() == KeyType.Escape
                                                 || key.getKeyType() == KeyType.EOF)) {
@@ -110,38 +107,27 @@ public class Boh {
                                         break;
                                 }
 
-                                // Resize handling
                                 screen.doResizeIfNecessary();
                                 TerminalSize size = screen.getTerminalSize();
 
-                                // Clear Buffer
                                 screen.clear();
 
-                                // Draw Logic
                                 int fixedFaceX = 2;
-                                int fixedFaceY = 2; // Canto superior esquerdo
+                                int fixedFaceY = 2;
 
-                                // Desenha o Rosto
                                 String face = currentFace;
-                                tg.putString(fixedFaceX, fixedFaceY, face);
+                                putBold(tg, fixedFaceX, fixedFaceY, face);
 
-                                // Desenha a Fala
                                 String speech = currentSpeech;
-                                // Exibe ao lado do rosto (margem de ~12 chars)
-                                // Da esquerda para a direita, sem deslocamento
-                                // lateral
-                                tg.putString(fixedFaceX + 12, fixedFaceY, speech);
+                                putBold(tg, fixedFaceX + 12, fixedFaceY, speech);
 
-                                // Desenha instrução de saída
                                 String hint = "Pressione ESC para sair";
                                 tg.setForegroundColor(TextColor.ANSI.BLACK_BRIGHT);
-                                tg.putString(2, size.getRows() - 1, hint);
+                                putBold(tg, 2, size.getRows() - 1, hint);
                                 tg.setForegroundColor(TextColor.ANSI.DEFAULT);
 
-                                // Render Swap
                                 screen.refresh();
 
-                                // Cap FPS (~30fps)
                                 try {
                                         Thread.sleep(33);
                                 } catch (InterruptedException e) {
