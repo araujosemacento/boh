@@ -18,11 +18,14 @@ public class Boh extends Actor {
 
     private volatile String currentFace = IDLE_FACES.get(0);
     private volatile String currentSpeech = "";
+    private volatile String staticText = ""; // Texto estático exibido ao lado
     private final AtomicBoolean animating = new AtomicBoolean(true);
     private final AtomicBoolean talking = new AtomicBoolean(false); // Track
                                                                     // talking
                                                                     // state
     private PlaybackController playbackController; // Reference to controller
+    private volatile Thread currentTypewriterThread; // Referência para
+                                                     // interrupção
 
     public Boh() {
         super();
@@ -57,6 +60,37 @@ public class Boh extends Actor {
         // Face override logic could go here
     }
 
+    /**
+     * Define o texto estático exibido ao lado da fala.
+     */
+    public void setStaticText(String text) {
+        this.staticText = text != null ? text : "";
+    }
+
+    /**
+     * Retorna o texto estático atual.
+     */
+    public String getStaticText() {
+        return staticText;
+    }
+
+    /**
+     * Limpa o texto estático.
+     */
+    public void clearStaticText() {
+        this.staticText = "";
+    }
+
+    /**
+     * Interrompe a fala atual, se houver.
+     */
+    public void interruptSpeech() {
+        if (currentTypewriterThread != null && currentTypewriterThread.isAlive()) {
+            currentTypewriterThread.interrupt();
+        }
+        talking.set(false);
+    }
+
     public Thread say(String text) {
         // Use default suppliers if controller not present (fallback)
         java.util.function.Supplier<Boolean> runSupplier = () -> (playbackController == null
@@ -69,8 +103,17 @@ public class Boh extends Actor {
                 c -> SoundManager.playTypingSound(c), runSupplier, delaySupplier,
                 talking::set);
         Thread t = new Thread(tw, "Typewriter-Boh");
+        currentTypewriterThread = t;
         t.start();
         return t;
+    }
+
+    /**
+     * Exibe texto estático imediatamente (sem animação de digitação).
+     */
+    public void showStatic(String text) {
+        this.currentSpeech = "";
+        this.staticText = text != null ? text : "";
     }
 
     public String getCurrentFace() {

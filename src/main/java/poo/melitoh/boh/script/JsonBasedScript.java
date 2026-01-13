@@ -1,6 +1,7 @@
 package poo.melitoh.boh.script;
 
 import poo.melitoh.boh.core.Director;
+import poo.melitoh.boh.core.PlaybackController;
 import poo.melitoh.boh.model.DialogueLine;
 import poo.melitoh.boh.model.DialoguePhase;
 import poo.melitoh.boh.utils.DialogueLoader;
@@ -25,12 +26,26 @@ public class JsonBasedScript implements StageScript {
             return;
         }
 
+        PlaybackController pc = director.getPlaybackController();
+        pc.setTotalLines(phase.getLineCount());
+        pc.setCurrentLineIndex(0);
+
         new Thread(() -> {
             try {
                 Thread.sleep(500); // Delay inicial
 
-                for (int i = 0; i < phase.getLineCount(); i++) {
+                int i = 0;
+                while (i < phase.getLineCount()) {
+                    pc.setCurrentLineIndex(i);
                     DialogueLine line = phase.getLine(i);
+
+                    // Limpa texto estático anterior se não houver novo
+                    if (!line.hasStaticText()) {
+                        director.getBoh().clearStaticText();
+                    } else {
+                        // Define texto estático
+                        director.getBoh().setStaticText(line.getStatic());
+                    }
 
                     // Processa ações especiais antes da fala
                     if (line.hasAction()) {
@@ -44,24 +59,72 @@ public class JsonBasedScript implements StageScript {
 
                     // Executa a fala
                     String text = line.getText();
+                    Thread sayThread = null;
+
                     if (text != null && !text.trim().isEmpty() && !text.equals(" ")) {
                         if (director.getBoh() != null) {
-                            Thread sayThread = director.getBoh().say(text);
-                            try {
-                                sayThread.join();
-                            } catch (InterruptedException e) {
-                                Thread.currentThread().interrupt();
-                                return;
-                            }
+                            sayThread = director.getBoh().say(text);
                         }
                     }
 
-                    // Pausa após a fala
-                    long pauseMs = (long) (line.getPauseAfter() * 1000);
-                    if (pauseMs > 0) {
-                        Thread.sleep(pauseMs);
+                    // Aguarda a fala terminar, verificando navegação
+                    boolean skipped = false;
+                    boolean goBack = false;
+
+                    if (sayThread != null) {
+                        while (sayThread.isAlive()) {
+                            // Verifica se usuário quer pular
+                            if (pc.consumeSkipRequest()) {
+                                director.getBoh().interruptSpeech();
+                                skipped = true;
+                                break;
+                            }
+                            // Verifica se usuário quer voltar
+                            if (pc.consumePreviousRequest()) {
+                                director.getBoh().interruptSpeech();
+                                goBack = true;
+                                break;
+                            }
+                            Thread.sleep(50);
+                        }
                     }
+
+                    // Navegação
+                    if (goBack) {
+                        i = Math.max(0, i - 1);
+                        continue;
+                    }
+
+                    if (skipped) {
+                        i++;
+                        continue;
+                    }
+
+                    // Pausa após a fala (verificando navegação)
+                    long pauseMs = (long) (line.getPauseAfter() * 1000);
+                    long elapsed = 0;
+                    while (elapsed < pauseMs) {
+                        if (pc.consumeSkipRequest()) {
+                            break;
+                        }
+                        if (pc.consumePreviousRequest()) {
+                            i = Math.max(0, i - 1);
+                            goBack = true;
+                            break;
+                        }
+                        Thread.sleep(50);
+                        elapsed += 50;
+                    }
+
+                    if (goBack) {
+                        continue;
+                    }
+
+                    i++;
                 }
+
+                // Limpa estado ao finalizar
+                director.getBoh().clearStaticText();
 
                 // Arte final, se houver
                 if (phase.hasFinalArt()) {
