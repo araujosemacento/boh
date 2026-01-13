@@ -63,11 +63,18 @@ public class GameWindow implements Runnable {
         try {
             while (running) {
                 KeyStroke key = screen.pollInput();
-                if (key != null && (key.getKeyType() == KeyType.Escape
-                        || key.getKeyType() == KeyType.EOF)) {
-                    stop();
-                    System.exit(0);
-                    break;
+                if (key != null) {
+                    if (key.getKeyType() == KeyType.Escape || key.getKeyType() == KeyType.EOF) {
+                        stop();
+                        System.exit(0);
+                        break;
+                    } else if (key.getKeyType() == KeyType.Character && key.getCharacter() == ' ') {
+                        director.getPlaybackController().togglePlayPause();
+                    } else if (key.getKeyType() == KeyType.ArrowUp) {
+                        director.getPlaybackController().increaseSpeed();
+                    } else if (key.getKeyType() == KeyType.ArrowDown) {
+                        director.getPlaybackController().decreaseSpeed();
+                    }
                 }
 
                 screen.doResizeIfNecessary();
@@ -90,7 +97,10 @@ public class GameWindow implements Runnable {
                 putBold(tg, fixedFaceX + 12, fixedFaceY, speech);
 
                 // Draw Hint
-                String hint = "Pressione ESC para sair";
+                String hint = "ESC:Sair SPACE:Pause/Play UP/DOWN:Speed (" + director.getPlaybackController().getCharDelay() + "ms)";
+                if (!director.getPlaybackController().isPlaying()) {
+                    hint += " [PAUSED]";
+                }
                 tg.setForegroundColor(TextColor.ANSI.BLACK_BRIGHT);
                 putBold(tg, 2, size.getRows() - 1, hint);
                 tg.setForegroundColor(TextColor.ANSI.DEFAULT);

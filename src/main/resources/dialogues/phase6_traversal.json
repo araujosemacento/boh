@@ -1,0 +1,96 @@
+{
+  "phaseId": "traversal",
+  "phaseName": "Percorrendo a Lista",
+  "lines": [
+    {
+      "text": "Se a gente inverteu anterior e próximo,",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_2",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Como mudar os valores subsequentes?",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_2",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "O que é frente e o que é trás?",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_2",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Bom, tudo depende se estamos começando de Head ou Tail.",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_2",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Como estamos começando de Tail, estamos no final.",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_2",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Para alterar todos os demais valores,",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_2",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Só precisamos ir até cada elemento que nos antecede,",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_2",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Que da nossa perspectiva atual, seria esse aqui:",
+      "expression": "idle",
+      "ascii": "AUX_TRAVERSE_1",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "E ao invertermos as setinhas desse elemento também,",
+      "expression": "idle",
+      "ascii": "AUX_TRAVERSE_2",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Vemos que se simplesmente continuarmos indo em direção",
+      "expression": "idle",
+      "ascii": "AUX_TRAVERSE_3",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "À atual direção do elemento anterior,",
+      "expression": "idle",
+      "ascii": "AUX_TRAVERSE_3",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Em algum momento...",
+      "expression": "idle",
+      "ascii": "AUX_TRAVERSE_4",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Nós estaremos de cara com a outra ponta da lista,",
+      "expression": "idle",
+      "ascii": "AUX_TRAVERSE_5",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "E ao perceber que não há mais elementos",
+      "expression": "idle",
+      "ascii": "AUX_TRAVERSE_6",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Tcharam! Invertemos a lista com sucesso! :D",
+      "expression": "idle",
+      "ascii": "AUX_TRAVERSE_FINAL",
+      "pauseAfter": 1.5
+    }
+  ]
+}

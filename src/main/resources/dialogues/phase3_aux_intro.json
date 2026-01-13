@@ -1,0 +1,89 @@
+{
+  "phaseId": "aux_intro",
+  "phaseName": "Introdução do AUX",
+  "asciiArt": {
+    "AUX_NORMAL": [
+      "       __",
+      "   _  |@@|",
+      "  / \\ \\--/ __",
+      "  ) O|----|  |   __",
+      " / / \\ }{ /\\ )_ / _\\\\",
+      " )/  /\\__/\\ \\__O (__",
+      "|/  (--/\\--)    \\__/",
+      "/   _)(  )(_",
+      "   `---''---`"
+    ],
+    "AUX_WAVE": [
+      "        __",
+      " _(\\    |@@|",
+      "(__/\\__ \\--/ __",
+      "   \\___|----|  |   __",
+      "       \\ }{ /\\ )_ / _\\\\",
+      "       /\\__/\\ \\__O (__",
+      "      (--/\\--)    \\__/",
+      "      _)(  )(_",
+      "     `---''---`"
+    ],
+    "AUX_GOODBYE": [
+      "        __",
+      "(_|)   |@@|",
+      " \\ \\__ \\--/ __",
+      "  \\o__|----|  |   __",
+      "      \\ }{ /\\ )_ / _\\\\",
+      "      /\\__/\\ \\__O (__",
+      "     (--/\\--)    \\__/",
+      "     _)(  )(_",
+      "    `---''---`"
+    ]
+  },
+  "lines": [
+    {
+      "text": "Meu mano aqui se chama AUX,",
+      "expression": "idle",
+      "ascii": "AUX_NORMAL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Tudo bem contigo, patrão?",
+      "expression": "idle",
+      "ascii": "AUX_WAVE",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Ele se ofereceu pra guardar o valor de Tail",
+      "expression": "idle",
+      "ascii": "AUX_NORMAL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Pra que a gente não perca na hora de trocar...",
+      "expression": "idle",
+      "ascii": "AUX_NORMAL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Revisitando então o estado da nossa lista",
+      "expression": "idle",
+      "ascii": "AUX_WITH_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Graças ao AUX, que guardou o valor de Tail",
+      "expression": "idle",
+      "ascii": "AUX_WITH_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Podemos facilmente colocar Tail onde o Head original está",
+      "expression": "idle",
+      "ascii": "AUX_WITH_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Obrigado AUX, você é o cara! Até mais tarde!",
+      "expression": "idle",
+      "ascii": "AUX_GOODBYE",
+      "pauseAfter": 1.0
+    }
+  ]
+}

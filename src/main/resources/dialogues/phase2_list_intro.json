@@ -1,0 +1,196 @@
+{
+  "phaseId": "list_intro",
+  "phaseName": "Introdução da Lista",
+  "lines": [
+    {
+      "text": "Reconhece?",
+      "expression": "idle",
+      "static": "§LIST_MODEL",
+      "pauseAfter": 1.5
+    },
+    {
+      "text": "Ih, verdade, cê não consegue me responder, né?",
+      "expression": "idle",
+      "static": "§LIST_MODEL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Hmmm",
+      "expression": "thinking",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Já sei!",
+      "expression": "open mouth",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Aqui, toma",
+      "expression": "idle",
+      "static": "§ASK_TEMPLATE",
+      "pauseAfter": 1.5
+    },
+    {
+      "text": "Agora sempre que eu te perguntar algo,",
+      "expression": "idle",
+      "static": "§ASK_TEMPLATE",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Você pode responder digitando",
+      "expression": "idle",
+      "static": "§ASK_TEMPLATE",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "A letra destacada que achar mais cabível.",
+      "expression": "idle",
+      "static": "§ASK_TEMPLATE",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Entendeu, né?",
+      "expression": "idle",
+      "static": "§ASK_TEMPLATE",
+      "pauseAfter": 0.5,
+      "action": "WAIT_RESPONSE"
+    },
+    {
+      "text": "Enfim, voltando ao assunto...",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Reconhece isso aqui, né?",
+      "expression": "idle",
+      "pauseAfter": 0.1
+    },
+    {
+      "text": " ",
+      "expression": "looking down",
+      "static": "Reconhece isso aqui, né?",
+      "pauseAfter": 0.25,
+      "action": "SHOW_LIST_WITH_ASK"
+    },
+    {
+      "text": "Bom, como você já sabe... a lista é uma estrutura de dados",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Mas tô aqui pra discutir um desafio específico relacionado a ela...",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "O desafio é o seguinte:",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Que tal inverter uma lista?",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Ou melhor, qual seria a maneira mais eficiente de fazer isso?",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Bom, a gente pode fazer isso de várias maneiras...",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Mas, acho que a primeira coisa que vem à cabeça é...",
+      "expression": "idle",
+      "static": "§LIST_MODEL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Fazer isso, né?",
+      "expression": "idle",
+      "static": "§COLORED_LIST",
+      "pauseAfter": 1.5
+    },
+    {
+      "text": "Trocando Head e Tail, o que era a \"frente\" da lista,",
+      "expression": "idle",
+      "static": "§COLORED_LIST",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Passa a ser o \"final\" dela, e vice-versa.",
+      "expression": "idle",
+      "static": "§COLORED_LIST",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Mas, pera aí! Como isso acontece exatamente?",
+      "expression": "idle",
+      "static": "§COLORED_LIST",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Digamos que, a gente iguale §rTail §wa §bHead",
+      "expression": "idle",
+      "static": "§COLORED_LIST",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Eita... agora temos duas Heads!",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.5
+    },
+    {
+      "text": "Isso porque §rTail §w= §bHead §wnão é uma troca de valores,",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Só estamos dizendo que §rTail §wagora recebe",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "O objeto contido dentro de §bHead§w.",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Mas assim como abrir espaço numa estante pra guardar um livro,",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Não significa que haverá espaço para guardar novamente",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "O antigo livro que tiramos para guardar o livro novo...",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "O que significa que precisamos salvar",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "O antigo valor de Tail, antes de trocá-lo por Head.",
+      "expression": "idle",
+      "static": "§LIST_TWO_HEADS",
+      "pauseAfter": 1.0
+    }
+  ]
+}

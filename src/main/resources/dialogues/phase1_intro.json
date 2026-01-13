@@ -1,0 +1,86 @@
+{
+  "phaseId": "intro",
+  "phaseName": "Introdução",
+  "lines": [
+    {
+      "text": "Oi, tudo bem?",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Muito obrigado por executar o meu script",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Eu me chamo §gBOH!",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "He He",
+      "expression": "idle",
+      "pauseAfter": 0.75
+    },
+    {
+      "text": "Sabe...",
+      "expression": "idle",
+      "pauseAfter": 0.75
+    },
+    {
+      "text": "Tipo,",
+      "expression": "idle",
+      "pauseAfter": 0.5
+    },
+    {
+      "text": " ",
+      "expression": "idle",
+      "static": "Tipo, §bROH",
+      "pauseAfter": 0.5
+    },
+    {
+      "text": " ",
+      "expression": "idle",
+      "static": "Tipo, §bROH§r-§g§bBOH",
+      "pauseAfter": 0.5
+    },
+    {
+      "text": "Ai ai, sou meio comédia às vezes, sabe?",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Mas, enfim,",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "E você, como se chama?",
+      "expression": "idle",
+      "pauseAfter": 0.5,
+      "action": "ASK_NAME"
+    },
+    {
+      "text": "Olha olha olha, na verdade, eu não tenho muito tempo...",
+      "expression": "pokerface",
+      "pauseAfter": 1.5
+    },
+    {
+      "text": "Me desculpa! Você parece ser uma pessoa muito legal, mas...",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "A pessoa que me mandou aqui, queria falar sobre ↓ isso ↓",
+      "expression": "idle",
+      "pauseAfter": 0.2
+    },
+    {
+      "text": " ",
+      "expression": "looking down",
+      "static": "A pessoa que me mandou aqui, queria falar sobre ↓ isso ↓",
+      "pauseAfter": 0.2,
+      "action": "SHOW_LIST"
+    }
+  ]
+}

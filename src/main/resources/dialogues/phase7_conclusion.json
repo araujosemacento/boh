@@ -1,0 +1,38 @@
+{
+  "phaseId": "conclusion",
+  "phaseName": "Conclusão",
+  "lines": [
+    {
+      "text": "E era isso que eu e AUX tínhamos pra te mostrar hoje!",
+      "expression": "idle",
+      "ascii": "AUX_NORMAL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Espero que tenhamos conseguido te ajudar!",
+      "expression": "idle",
+      "ascii": "AUX_WAVE",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "A gente se vê na próxima, beleza?",
+      "expression": "idle",
+      "ascii": "AUX_GOODBYE",
+      "pauseAfter": 1.0
+    }
+  ],
+  "finalArt": [
+    "(„• ֊ •„)੭      ⠀⠀⠀⢀⡴⠟⠛⢷⡄⠀⣠⠞⠋⠉⠳⡄⠀⠀⠀⠀",
+    "                ⠀⠀⠀⣸⠁⠀⠀⠈⣧⢰⠇⠀⠀⠀⢠⡇⠀⠀⠀⠀",
+    "                ⠀⠀⠀⠸⣆⠀⠀⠀⠘⣿⠀⠀⠀⠀⡞⠀⠀⠀⠀⠀",
+    "                ⠀⠀⠀⠀⠹⣦⠀⠀⠀⠘⡄⠀⠀⠀⡇⠀⠀⠀⠀⠀",
+    "                ⠀⠀⠀⡴⠚⠙⠳⣀⡴⠂⠁⠒⢄⠀⢿⡀⠀⠀⠀⠀",
+    "                ⠀⠀⢸⡇⠀⢀⠔⠉⠀⠀⠀⡀⠀⠂⠘⣇⠀⠀⠀⠀",
+    "                ⠀⠀⠀⢳⡀⠘⢄⣀⣀⠠⠶⠄⠀⠀⠀⡿⠀⠀⠀⠀",
+    "                ⠀⠀⠀⠀⠻⣕⠂⠁⠀⠀⠀⠀⠀⠀⣰⡇⠀⠀⠀⠀",
+    "                ⠀⠀⠀⠀⠀⠹⣅⠒⠀⠒⠂⠐⠒⢉⡼⢁⣤⠀⠀⠀",
+    "                ⠀⢀⣼⣻⣆⣤⢈⣙⣒⠶⠶⣶⣞⢿⣸⡟⠳⣾⣂⣤",
+    "                ⠸⢿⣽⠏⢠⡿⠋⣿⣭⢁⣈⣿⣽⣆⠙⢷⣄⠙⠋⠁",
+    "                ⠀⠀⠀⠀⠛⠃⠰⠿⣤⠄⠀⠸⠷⠟⠀⠀⠁⠀⠀⠀"
+  ]
+}

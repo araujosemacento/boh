@@ -1,0 +1,144 @@
+{
+  "phaseId": "pointers",
+  "phaseName": "Explicação dos Ponteiros",
+  "lines": [
+    {
+      "text": "Só que, isso não é o suficiente, né?",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Por causa desses caras aqui: ‹[]»",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Mais especificamente, ‹ » , esses dois.",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "No nosso caso, eles representam",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Os ponteiros que identificam",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Quais elementos precedem e sucedem",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "O objeto observado, seja lá qual você escolha.",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Até aí tudo bem, né?",
+      "expression": "idle",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Estamos na mesma página, então?",
+      "expression": "thinking",
+      "static": "§SWAPPED_EDGES",
+      "pauseAfter": 0.2
+    },
+    {
+      "text": " ",
+      "expression": "thinking",
+      "static": "Estamos na mesma página, então?",
+      "pauseAfter": 0.5,
+      "action": "SHOW_ASK_TEMPLATE"
+    },
+    {
+      "text": "Então, vamos lá!",
+      "expression": "open mouth",
+      "static": "§SWAPPED_EDGES",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "De modo geral, essas setinhas são tão importantes",
+      "expression": "idle",
+      "static": "§SWAPPED_EDGES",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Pra esse exercício, que a gente vai precisar",
+      "expression": "idle",
+      "static": "§SWAPPED_EDGES",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Deixar elas bem visíveis, pra não confundir.",
+      "expression": "idle",
+      "static": "§SWAPPED_EDGES",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Que tal...",
+      "expression": "thinking",
+      "static": "§SWAPPED_EDGES",
+      "pauseAfter": 1.5
+    },
+    {
+      "text": " ",
+      "expression": "thinking",
+      "static": "Assim...",
+      "pauseAfter": 0.5
+    },
+    {
+      "text": " ",
+      "expression": "thinking",
+      "static": "Assim... §o‹›§b«»",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Melhorou, né?",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "As setas simples, ou seja, ‹ & › , destacadas em laranja,",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Representam a variável do nosso objeto que",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Nos mostra qual é o elemento que o precede",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Já as setas duplas, ou seja, » & « , destacadas em azul,",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Representam a variável do nosso objeto que",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Nos mostra qual é o elemento que o sucede",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    }
+  ]
+}

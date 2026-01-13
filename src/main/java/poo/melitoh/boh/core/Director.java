@@ -14,12 +14,19 @@ public class Director {
     private final List<Actor> actors = new ArrayList<>();
     private final Boh boh;
     private final Auxiliary aux;
+    private final PlaybackController playbackController;
 
     public Director() {
+        playbackController = new PlaybackController();
         boh = new Boh();
+        boh.setPlaybackController(playbackController);
         aux = new Auxiliary();
         actors.add(boh);
         actors.add(aux);
+    }
+
+    public PlaybackController getPlaybackController() {
+        return playbackController;
     }
 
     public Boh getBoh() {

@@ -1,0 +1,149 @@
+{
+  "phaseId": "arrow_swap",
+  "phaseName": "Inversão das Setas",
+  "lines": [
+    {
+      "text": "Seguindo essa lógica,",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Acho que deu pra perceber que a gente",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Também vai precisar inverter essas setinhas",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Pra inverter a lista, certo?",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Já que, simplesmente trocar Head e Tail",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Não trocou as setinhas, de cada elemento.",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Então é como se olhássemos para trás,",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Mas continuássemos andando para frente.",
+      "expression": "idle",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Até aqui tudo bem? Posso continuar?",
+      "expression": "idle",
+      "static": "§SWAPPED_EDGES",
+      "colorizeArrows": true,
+      "pauseAfter": 0.5
+    },
+    {
+      "text": " ",
+      "expression": "idle",
+      "static": "Até aqui tudo bem? Posso continuar?",
+      "pauseAfter": 0.2,
+      "action": "WAIT_RESPONSE"
+    },
+    {
+      "text": "Então, vamos lá!",
+      "expression": "open mouth",
+      "static": "§SWAPPED_EDGES",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Se formos então focar particularmente",
+      "expression": "idle",
+      "static": "§SWAPPED_EDGES",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Na posição que a Tail ocupa agora,",
+      "expression": "idle",
+      "static": "§SWAPPED_EDGES",
+      "colorizeArrows": true,
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Ora, se as setas são direções,",
+      "expression": "idle",
+      "static": "§LIST_HIGHLIGHTED_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Podemos simplesmente invertê-las, certo?",
+      "expression": "idle",
+      "static": "§LIST_HIGHLIGHTED_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Assim como fizemos antes entre Tail e Head.",
+      "expression": "idle",
+      "static": "§LIST_HIGHLIGHTED_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Ou seja...",
+      "expression": "idle",
+      "static": "§LIST_HIGHLIGHTED_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "§bAUX!",
+      "expression": "idle",
+      "static": "§LIST_HIGHLIGHTED_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Chega aí, meu querido!",
+      "expression": "idle",
+      "static": "§LIST_HIGHLIGHTED_TAIL",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Segura aqui pá nóis, fazendo favô.",
+      "expression": "idle",
+      "ascii": "AUX_HOLD_PREV",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "Agora que Aux tem o valor de anterior,",
+      "expression": "idle",
+      "ascii": "AUX_HOLD_PREV",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "A gente coloca o valor de próximo no lugar de anterior,",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_1",
+      "pauseAfter": 1.0
+    },
+    {
+      "text": "E o valor do Aux, no lugar de próximo. Mas...",
+      "expression": "idle",
+      "ascii": "AUX_SWAP_2",
+      "pauseAfter": 1.0
+    }
+  ]
+}
