@@ -3,7 +3,7 @@ package poo.melitoh.boh.script;
 import poo.melitoh.boh.core.Director;
 
 /**
- * Roteiro de inversão das setas - carrega diálogos do arquivo
+ * Roteiro de inversão das setas - pra ser implementado, carregando diálogos do arquivo
  * phase5_arrow_swap.json.
  */
 public class ArrowSwapScript extends JsonBasedScript {

@@ -2,40 +2,91 @@ package poo.melitoh.boh.model;
 
 import poo.melitoh.boh.ui.Typewriter;
 import poo.melitoh.boh.utils.SoundManager;
-import poo.melitoh.boh.core.PlaybackController; // Import PlaybackController
+import poo.melitoh.boh.core.PlaybackController;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Personagem principal Boh.
+ * Personagem principal.
+ * <p>
+ * Essa classe representa o protagonista que "fala" com o usuário através de
+ * efeito animado typewriter, onde uma letra é exibida por vez, acompanhada das
+ * expressões faciais animadas. Boh ensina os conceitos do algoritmo de inversão
+ * de listas carismaticamente (if i do say so, myself).
+ * <p>
+ * Funcionalidades: <br>
+ * - Animação facial: alterna entre expressões enquanto ele "fala". <br>
+ * - Typewriter: exibe texto caractere por caractere, teria som na adaptação
+ * completa do script. <br>
+ * - Texto estático: era pra exibir conteúdo sem animação (código, exemplos).
+ * <br>
+ * - Controle de estado: integração com
+ * {@link poo.melitoh.boh.core.PlaybackController} pra pausar/retomar as
+ * animações. <br>
+ * <p>
+ * A animação facial roda em thread separada, atualizando a expressão apenas
+ * quando Boh está "falando" (talking = true), pra dar a impressão de movimento
+ * labial estilizado, mudança de expressão faccial, etc.
  */
 public class Boh extends Actor {
 
+    /** Lista de expressões faciais pra animação de "fala". */
     private static final List<String> IDLE_FACES = Arrays.asList("[ ▀ ¸ ▀]", "[ ▀ ° ▀]",
             "[ ▀ ■ ▀]", "[ ▀ ─ ▀]", "[ ▀ ~ ▀]", "[ ▀ ▄ ▀]", "[ ▀ ¬ ▀]", "[ ▀ · ▀]",
             "[ ▀ _ ▀]");
 
+    /** Expressão facial atual sendo exibida. */
     private volatile String currentFace = IDLE_FACES.get(0);
-    private volatile String currentSpeech = "";
-    private volatile String staticText = ""; // Texto estático exibido ao lado
-    private final AtomicBoolean animating = new AtomicBoolean(true);
-    private final AtomicBoolean talking = new AtomicBoolean(false); // Track
-                                                                    // talking
-                                                                    // state
-    private PlaybackController playbackController; // Reference to controller
-    private volatile Thread currentTypewriterThread; // Referência para
-                                                     // interrupção
 
+    /** Texto sendo digitado pelo efeito typewriter. */
+    private volatile String currentSpeech = "";
+
+    /** Texto estático exibido ao lado da fala. */
+    private volatile String staticText = "";
+
+    /** Flag de controle da thread de animação facial. */
+    private final AtomicBoolean animating = new AtomicBoolean(true);
+
+    /** Flag que indica se Boh está "falando" (animação ativa). */
+    private final AtomicBoolean talking = new AtomicBoolean(false);
+
+    /** Referência ao controlador de playback pra sincronização. */
+    private PlaybackController playbackController;
+
+    /** Thread atual do typewriter pra permitir interrupção. */
+    private volatile Thread currentTypewriterThread;
+
+    /**
+     * Construtor que inicializa Boh e inicia a animação das expressões faciais.
+     * <p>
+     * Chama o construtor pai e dispara a thread de animação de expressões.
+     */
     public Boh() {
         super();
         startFaceAnimation();
     }
 
+    /**
+     * Vincula o controlador de playback ao Boh.
+     * <p>
+     * Permite que a animação respeite o estado de pause/play e a velocidade
+     * configurada pelo usuário.
+     *
+     * @param controller O {@link poo.melitoh.boh.core.PlaybackController}
+     *                   ativo.
+     */
     public void setPlaybackController(PlaybackController controller) {
         this.playbackController = controller;
     }
 
+    /**
+     * Inicia a thread de animação facial.
+     * <p>
+     * Roda em background, alternando entre expressões a cada 200ms, mas só
+     * atualiza a face quando {@code talking} é true, pra que ele não pare de
+     * falar e continue "gesticulando".
+     */
     private void startFaceAnimation() {
         Thread faceThread = new Thread(() -> {
             int index = 0;
@@ -56,12 +107,20 @@ public class Boh extends Actor {
         faceThread.start();
     }
 
+    /**
+     * Define o humor/expressão fixa do Boh.
+     * <p>
+     * Placeholder pra futura implementação das outras expressões (feliz,
+     * confuso, pensativo, etc.).
+     *
+     * @param mood Identificador do humor (não implementado).
+     */
     public void setMood(String mood) {
-        // Face override logic could go here
+        // A futura lógica de mudança de humor vem aqui
     }
 
     /**
-     * Define o texto estático exibido ao lado da fala.
+     * Define o texto estático pra ser exibido do lado/embaixo da fala do Boh.
      */
     public void setStaticText(String text) {
         this.staticText = text != null ? text : "";
@@ -91,8 +150,21 @@ public class Boh extends Actor {
         talking.set(false);
     }
 
+    /**
+     * Faz Boh "falar" um texto com efeito typewriter.
+     * <p>
+     * Cria uma instância de {@link poo.melitoh.boh.model.Typewriter} que exibe
+     * o texto caractere por caractere e atualiza a flag de talking pra ativar a
+     * animação das expressões.
+     * <p>
+     * O método retorna a Thread pra aguardar o término da fala com
+     * {@code join()} se preciso for.
+     *
+     * @param text Texto a ser "falado".
+     * @return A Thread do typewriter pra controle externo.
+     */
     public Thread say(String text) {
-        // Use default suppliers if controller not present (fallback)
+        // Suppliers com fallback caso controller não esteja presente
         java.util.function.Supplier<Boolean> runSupplier = () -> (playbackController == null
                 || playbackController.isPlaying());
         java.util.function.Supplier<Long> delaySupplier = () -> (playbackController != null
@@ -116,23 +188,50 @@ public class Boh extends Actor {
         this.staticText = text != null ? text : "";
     }
 
+    /**
+     * Retorna a expressão facial atual.
+     *
+     * @return String que representa o rosto do Boh no momento (ex: "[ ▀ ° ▀]").
+     */
     public String getCurrentFace() {
         return currentFace;
     }
 
+    /**
+     * Retorna o texto sendo exibido pelo typewriter.
+     *
+     * @return Texto parcial ou completo da fala atual.
+     */
     public String getCurrentSpeech() {
         return currentSpeech;
     }
 
+    /**
+     * Verifica se Boh está falando.
+     *
+     * @return {@code true} se o typewriter estiver ativo.
+     */
     public boolean isTalking() {
         return talking.get();
     }
 
+    /**
+     * Atualiza o estado do Boh.
+     * <p>
+     * Placeholder pra futuras atualizações por frame que não dependam das
+     * threads de animação e typewriter.
+     */
     @Override
     public void updateState() {
         // Atualizações por frame se necessário
     }
 
+    /**
+     * Libera recursos e para thread de animação.
+     * <p>
+     * Tem que ser chamado quando a aplicação for encerrada pra garantir que a
+     * thread de animação facial termine graciosamente *v*.
+     */
     public void cleanup() {
         animating.set(false);
     }

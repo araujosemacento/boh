@@ -3,8 +3,8 @@ package poo.melitoh.boh.script;
 import poo.melitoh.boh.core.Director;
 
 /**
- * Roteiro de introdução da lista - carrega diálogos do arquivo
- * phase2_list_intro.json.
+ * Roteiro de introdução da lista - pra ser implementado, carregando diálogos do
+ * arquivo phase2_list_intro.json.
  */
 public class ListIntroScript extends JsonBasedScript {
 

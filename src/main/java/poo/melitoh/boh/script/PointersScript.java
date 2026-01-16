@@ -3,8 +3,8 @@ package poo.melitoh.boh.script;
 import poo.melitoh.boh.core.Director;
 
 /**
- * Roteiro de explicação dos ponteiros - carrega diálogos do arquivo
- * phase4_pointers.json.
+ * Roteiro de explicação dos ponteiros - pra ser implementado, carregando
+ * diálogos do arquivo phase4_pointers.json.
  */
 public class PointersScript extends JsonBasedScript {
 

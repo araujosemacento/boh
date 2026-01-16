@@ -8,24 +8,55 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Utilitário para processar e renderizar texto formatado com códigos especiais.
- * 
- * Códigos suportados: - §r : Reset (volta à cor padrão) - §b : Azul (bold) - §g
- * : Verde - §o : Laranja - §w : Branco (padrão) - §0 : Preto
- * 
- * A formatação se aplica apenas até: espaço, quebra de linha, ou outro código
- * §.
+ * Utilitário pra processamento e renderização de texto formatado.
+ * <p>
+ * Essa classe implementa um sistema simples de formatação de texto usando
+ * códigos especiais prefixados com § (inspirado no sistema que o Minecraft usa,
+ * porque eu ainda tô com vontade de voltar a jogar de novo. Segue o link da
+ * wiki, por curiosidade: <a href=
+ * "https://minecraft.fandom.com/wiki/Formatting_codes#:~:text=Text%20in%20Minecraft%20can%20be%20formatted%20with%20the%20section%20sign%20(%C2%A7).">Formatting
+ * codes</a>). </br>
+ * Permite adicionar cores e estilos ao texto exibido no terminal. </br>
+ * Não é uma adaptação fiel, mas uma tentativa quase completa de replicar o
+ * comportamento original.
+ * <p>
+ * Códigos suportados: <br>
+ * - {@code §r} : Reset (volta à cor padrão). <br>
+ * - {@code §b} : Azul. <br>
+ * - {@code §g} : Verde. <br>
+ * - {@code §o} : Laranja. <br>
+ * - {@code §w} : Branco. <br>
+ * - {@code §0} : Preto. <br>
+ * <p>
+ * A formatação se aplica apenas até o próximo delimitador (espaço, quebra de
+ * linha ou outro código §), pra tentar manter o comportamento previsível e
+ * fácil de usar, talvez seja alterado no futuro.
  */
 public class TextFormatter {
 
     /**
-     * Representa um segmento de texto com sua cor associada.
+     * Representa um segmento de texto com formatação associada.
+     * <p>
+     * Cada segmento tem uma porção do texto original junto com sua cor e
+     * estado, pra permitir renderização incremental.
      */
     public static class TextSegment {
+        /** Conteúdo textual do segmento. */
         public final String text;
+
+        /** Cor do texto neste segmento. */
         public final TextColor color;
+
+        /** Se o texto vai ser renderizado em negrito. */
         public final boolean bold;
 
+        /**
+         * Construtor do segmento com todos os atributos.
+         *
+         * @param text  Texto do segmento.
+         * @param color Cor a ser aplicada.
+         * @param bold  Se vai usar negrito.
+         */
         public TextSegment(String text, TextColor color, boolean bold) {
             this.text = text;
             this.color = color;
@@ -34,9 +65,14 @@ public class TextFormatter {
     }
 
     /**
-     * Parseia uma string com códigos de formatação e retorna uma lista de
-     * segmentos. A formatação se aplica apenas à "palavra" atual (até espaço,
-     * \n ou §r).
+     * Parseia uma string com os códigos de formatação.
+     * <p>
+     * Processa o texto de entrada, identificando os códigos § e criando
+     * segmentos com as cores apropriadas. A formatação é resetada
+     * automaticamente em espaços e quebras de linha.
+     *
+     * @param input Texto com possíveis códigos de formatação.
+     * @return Lista de {@link TextSegment} pra renderização.
      */
     public static List<TextSegment> parse(String input) {
         List<TextSegment> segments = new ArrayList<>();
@@ -74,7 +110,8 @@ public class TextFormatter {
                     currentColor = TextColor.ANSI.GREEN_BRIGHT;
                     bold = true;
                 }
-                case 'o' -> { // Laranja (usando amarelo como aproximação)
+                case 'o' -> { // Laranja (usando amarelo como aproximação, pra
+                              // implementar as setas coloridas depois, se pá)
                     currentColor = new TextColor.RGB(255, 165, 0);
                     bold = true;
                 }
@@ -97,7 +134,7 @@ public class TextFormatter {
                 continue;
             }
 
-            // Verifica se é um delimitador que reseta a cor (espaço ou quebra
+            // Verifica se é um limitador que reseta a cor (espaço ou quebra
             // de linha)
             if (c == ' ' || c == '\n') {
                 // Flush buffer com cor atual
@@ -108,7 +145,7 @@ public class TextFormatter {
                 // Adiciona o delimitador com cor padrão
                 segments.add(
                         new TextSegment(String.valueOf(c), TextColor.ANSI.DEFAULT, true));
-                // Reset para cor padrão após delimitador
+                // Reset para cor padrão depois do caractere-chave
                 currentColor = TextColor.ANSI.DEFAULT;
                 i++;
                 continue;
@@ -128,13 +165,16 @@ public class TextFormatter {
     }
 
     /**
-     * Renderiza texto formatado usando TextGraphics do Lanterna.
-     * 
-     * @param tg   TextGraphics para renderização
-     * @param x    Posição X inicial
-     * @param y    Posição Y
-     * @param text Texto com códigos de formatação
-     * @return Largura total do texto renderizado (para posicionamento)
+     * Renderiza texto formatado.
+     * <p>
+     * Combina o parsing e a renderização em uma operação só, iterando em cima
+     * dos segmentos e aplicando cores e estilos seguindo o que foi definido.
+     *
+     * @param tg   {@link TextGraphics} do Lanterna pra renderização.
+     * @param x    Posição X inicial (coluna).
+     * @param y    Posição Y (linha).
+     * @param text Texto com os códigos de formatação.
+     * @return Largura total do texto renderizado (pra posicionamento).
      */
     public static int render(TextGraphics tg, int x, int y, String text) {
         List<TextSegment> segments = parse(text);
@@ -152,14 +192,14 @@ public class TextFormatter {
             currentX += segment.text.length();
         }
 
-        // Restaura cor original
+        // Restaura a cor original
         tg.setForegroundColor(originalColor);
 
         return currentX - x;
     }
 
     /**
-     * Remove os códigos de formatação e retorna apenas o texto puro.
+     * Remove os códigos de formatação e retorna só texto puro.
      */
     public static String stripFormatting(String input) {
         if (input == null)

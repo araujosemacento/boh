@@ -9,8 +9,7 @@
   <version>1.0</version>
 
   <name>boh</name>
-  <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
+  <url>https://github.com/araujosemacento/boh</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -30,16 +29,17 @@
   </dependencyManagement>
 
   <dependencies>
-    <dependency>
-      <groupId>com.googlecode.lanterna</groupId>
-      <artifactId>lanterna</artifactId>
-      <version>3.2.0-alpha1</version>
-    </dependency>
 
     <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
-      <version>2.10.1</version>
+      <version>2.13.1</version>
+    </dependency>
+
+    <dependency>
+      <groupId>com.googlecode.lanterna</groupId>
+      <artifactId>lanterna</artifactId>
+      <version>3.2.0-alpha1</version>
     </dependency>
 
     <dependency>
@@ -57,7 +57,6 @@
 
   <build>
     <plugins>
-      <!--  Hopefully includes dependencies in the final jar -->
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
         <version>3.7.1</version>
