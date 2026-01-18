@@ -10,7 +10,8 @@ Ainda que o script Python possa ser acessado na pasta [```original```](./origina
 
 $${Segue \space em \space anexo \space o \space vídeo \space para \space apresentação \space do \space projeto:}$$
 
-![thumbnail].(placeholder)
+<!-- markdownlint-disable-next-line -->
+<a href="./docs/video.mp4"><img alt="thumbnail" src="./docs/thumbnail.png"/></a>
 
 ## Instruções
 
