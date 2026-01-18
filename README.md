@@ -13,6 +13,8 @@ $${Segue \space em \space anexo \space o \space vídeo \space para \space aprese
 <!-- markdownlint-disable-next-line -->
 <video src="https://gist.github.com/user-attachments/assets/c84f36b4-c550-4643-a434-f094635c8cc8" data-canonical-src="https://gist.github.com/user-attachments/assets/c84f36b4-c550-4643-a434-f094635c8cc8" controls="controls" muted="muted" class="d-block rounded-bottom-2 width-fit" style="max-height:640px;"></video>
 
+O arquivo do vídeo acima pode ser encontrado para download [aqui](./docs/video.mp4).
+
 ## Instruções
 
 Para executar a versão mais recente do projeto Java, certifique-se de ter o JRE/JDK 21+ (ou superior) instalado, baixe/clone o projeto na sua máquina ou simplesmente realize o download do executável em [___Releases___](https://github.com/araujosemacento/boh/releases) e execute o comando a seguir na pasta-raiz, onde o executável se encontra:
