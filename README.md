@@ -11,7 +11,7 @@ Ainda que o script Python possa ser acessado na pasta [```original```](./origina
 $${Segue \space em \space anexo \space o \space vídeo \space para \space apresentação \space do \space projeto:}$$
 
 <!-- markdownlint-disable-next-line -->
-<video src="https://github-production-user-asset-6210df.s3.amazonaws.com/60983392/537319983-e8d60319-8760-4cd1-9f98-d529c2e6e3e0.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20260118%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260118T194353Z&X-Amz-Expires=300&X-Amz-Signature=379cb2a689fd58c34ec941708eb55d8be33d585294c57d0556327c7bba9b5304&X-Amz-SignedHeaders=host" controls preload></video>
+[![thumbnail](./docs/thumbnail.png)](https://www.youtube.com/watch?v=frEHPstMQ-0)
 
 O arquivo do vídeo acima pode ser encontrado para download [aqui](./docs/video-poo.mp4).
 
