@@ -11,7 +11,7 @@ Ainda que o script Python possa ser acessado na pasta [```original```](./origina
 $${Segue \space em \space anexo \space o \space vídeo \space para \space apresentação \space do \space projeto:}$$
 
 <!-- markdownlint-disable-next-line -->
-<a href="./docs/video.mp4"><img alt="thumbnail" src="./docs/thumbnail.png"/></a>
+<iframe width="560" height="315" src="https://www.youtube.com/embed/VUJar7wdni8?si=8ABzFVNgbU6aJrtC" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## Instruções
 
