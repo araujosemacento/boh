@@ -11,7 +11,7 @@ Ainda que o script Python possa ser acessado na pasta [```original```](./origina
 $${Segue \space em \space anexo \space o \space vídeo \space para \space apresentação \space do \space projeto:}$$
 
 <!-- markdownlint-disable-next-line -->
-<iframe width="560" height="315" src="https://www.youtube.com/embed/VUJar7wdni8?si=8ABzFVNgbU6aJrtC" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+<video src="https://gist.github.com/user-attachments/assets/c84f36b4-c550-4643-a434-f094635c8cc8" data-canonical-src="https://gist.github.com/user-attachments/assets/c84f36b4-c550-4643-a434-f094635c8cc8" controls="controls" muted="muted" class="d-block rounded-bottom-2 width-fit" style="max-height:640px;"></video>
 
 ## Instruções
 
