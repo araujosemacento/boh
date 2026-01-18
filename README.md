@@ -67,11 +67,11 @@ A seguir, incluímos uma "matriz comparativa" entre as funcionalidades do script
 | __Playback/Reprodução__ | Loops simples com delays e timeout. Apenas _```play/pause```_ | Play, pause, acelerar/desacelerar velocidade de diálogo, pular para fala seguinte ou anterior | Melhorado |
 | __Povoamento__ | Boh, Aux e Lista com diálogo completo | Apenas introdução de Boh | Estruturado (a ser aprimorado) |
 
-![gif-python].(placeholder)
+![gif-python](./docs/gif-python.webp)
 
 Enquanto o projeto original priorizava a experiência imersiva (áudio, timing, animações), o novo projeto tenta focar na robustez da arquitetura. Funcionalidades mais complexas de Input/Output em tempo real e áudio foram abstraídas pra dar espaço a uma estrutura de classes que busca representar o domínio do problema, pra garantir que o programa rode visualmente idêntico em qualquer sistema operacional com a janela Swing.
 
-![gif-java].(placeholder)
+![gif-java](./docs/gif-java.webp)
 
 ## Diagrama de Classes
 
