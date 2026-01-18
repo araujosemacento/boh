@@ -105,21 +105,21 @@ O projeto foi organizado em pacotes que refletem as seguintes responsabilidades:
 
 | Nº | Classes implementadas | Herança | Associação | Abstrata/Interface | Polimorfismo | Modificador de acesso | Estático |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| 1 | `Main` | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{blue}+}$$ | ~~`main()`~~ |
-| 2 | `Director` | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 3 | `PlaybackController` | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 4 | `GameWindow` | $${\color{green}✓}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 5 | `Actor` | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{#60a}\#}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 6 | `Boh` | $${\color{green}✓}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | `IDLE_FACES` |
-| 7 | `Auxiliary` | $${\color{green}✓}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 8 | `DialogueLine` | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 9 | `DialoguePhase` | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 10 | `StageScript` | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 11 | `JsonBasedScript` | $${\color{green}✓}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{#60a}\#}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 12 | `IntroScript` | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{blue}+}$$ | $${\color{red}✗}$$ |
-| 13 | `DialogueLoader` | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | `DIALOGUES_PATH`, `cache`, `loadPhases()`, `clearCache()`... |
-| 14 | `TextFormatter` | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{red}✗}$$ | $${\color{blue}+}$$ | `parse()` |
-| 15 | `Typewriter` | $${\color{green}✓}$$ | $${\color{green}✓}$$ | $${\color{red}✗}$$ | $${\color{green}✓}$$ | $${\color{orange}-}$$ $${\color{blue}+}$$ | $${\color{red}✗}$$ |
+| 1 | `Main` | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{blue}+}$ | ~~`main()`~~ |
+| 2 | `Director` | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{orange}-}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 3 | `PlaybackController` | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{orange}-}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 4 | `GameWindow` | ${\color{green}✓}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{orange}-}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 5 | `Actor` | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{#60a}\#}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 6 | `Boh` | ${\color{green}✓}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{orange}-}$ ${\color{blue}+}$ | `IDLE_FACES` |
+| 7 | `Auxiliary` | ${\color{green}✓}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{orange}-}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 8 | `DialogueLine` | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{orange}-}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 9 | `DialoguePhase` | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{orange}-}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 10 | `StageScript` | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 11 | `JsonBasedScript` | ${\color{green}✓}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{#60a}\#}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 12 | `IntroScript` | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{blue}+}$ | ${\color{red}✗}$ |
+| 13 | `DialogueLoader` | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{orange}-}$ ${\color{blue}+}$ | `DIALOGUES_PATH`, `cache`, `loadPhases()`, `clearCache()`... |
+| 14 | `TextFormatter` | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{red}✗}$ | ${\color{blue}+}$ | `parse()` |
+| 15 | `Typewriter` | ${\color{green}✓}$ | ${\color{green}✓}$ | ${\color{red}✗}$ | ${\color{green}✓}$ | ${\color{orange}-}$ ${\color{blue}+}$ | ${\color{red}✗}$ |
 
 ## Equipe
 
