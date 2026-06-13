@@ -1,53 +1,105 @@
-from sys import exit as sys_exit
-from subprocess import run
-from importlib.util import find_spec
+import hashlib
+import os
+import shutil
+import subprocess
+import sys
+
 from re import match, sub
 from time import sleep, time as current_time
 from random import choice
 from os import path, makedirs, listdir
 
 
-def check_dependencies() -> None:
-    modules = ["blessed", "pygame"]
-
-    for module in modules:
-        if find_spec(module) is None:
-            try:
-                import tkinter as tk
-                from tkinter import messagebox
-
-                root = tk.Tk()
-                root.withdraw()
-
-                message = f"Oi, tudo bem?\nEntão, o Boh meio que precisa\ndesse módulo pra te entender\ne ficar bonitinho\n conversando com você:\n\n{module}\n\nQuer que eu instale ele por você?"
-
-                result = messagebox.askyesno("Dependências Faltando", message)
-
-                if result:
-                    cmd = f"pip install {module}"
-                    print(f"\033[31mShow de Bola!\033[0m Executando: {cmd}\n")
-                    run(cmd, shell=True)
-                    print(
-                        "\n\033[34mReinicie o script após a instalação, beleza?\033[0m"
-                    )
-                else:
-                    print(
-                        f"\n\033[31mInstalação cancelada :(\033[0m\nSe quiser instalar depois, por conta própria,\nexecute:\n\n\033[34mpip install {module}\033[0m\n"
-                    )
-
-                root.destroy()
-                sys_exit()
-
-            except ImportError:
-                print(f"Módulos faltando: {module}")
-                print(f"Execute: pip install {module}")
-                sys_exit()
+def _venv_python(venv_dir: str) -> str:
+    if os.name == "nt":
+        return os.path.join(venv_dir, "Scripts", "python.exe")
+    return os.path.join(venv_dir, "bin", "python")
 
 
-check_dependencies()
+def _reqs_hash(requirements_path: str) -> str:
+    with open(requirements_path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
 
-from blessed import Terminal
-from pygame import mixer, error as pygame_error
+
+def _needs_pip(venv_dir: str, requirements_path: str) -> bool:
+    marker = os.path.join(venv_dir, ".boh_reqs_hash")
+    if not os.path.isfile(marker):
+        return True
+    with open(marker, "r", encoding="utf-8") as f:
+        stored = f.read().strip()
+    return stored != _reqs_hash(requirements_path)
+
+
+def _install_deps(venv_python: str, requirements_path: str, *, quiet: bool = False) -> None:
+    cmd = [venv_python, "-m", "pip", "install", "-r", requirements_path]
+    if quiet:
+        cmd.append("-q")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print("\033[31mErro ao instalar dependencias. Verifique sua conexao ou a compatibilidade do Python com os pacotes necessarios.\033[0m")
+        if result.stderr:
+            print(result.stderr)
+        sys.exit(1)
+
+
+def _ensure_venv() -> None:
+    if sys.prefix != sys.base_prefix:
+        return
+
+    base = os.path.dirname(os.path.abspath(__file__))
+    venv_dir = os.path.join(base, ".venv")
+    requirements_path = os.path.join(base, "requirements.txt")
+    venv_python = _venv_python(venv_dir)
+
+    if not os.path.isdir(venv_dir):
+        print("\033[36mPrimeira vez? Deixa eu preparar tudinho...\033[0m")
+        result = subprocess.run([sys.executable, "-m", "venv", venv_dir])
+        if result.returncode != 0:
+            print("\033[31mFalha ao criar o ambiente virtual.\033[0m")
+            sys.exit(1)
+
+    if not os.path.isfile(venv_python):
+        print("\033[31m.venv esta corrompido. Recriando...\033[0m")
+        shutil.rmtree(venv_dir, ignore_errors=True)
+        result = subprocess.run([sys.executable, "-m", "venv", venv_dir])
+        if result.returncode != 0:
+            print("\033[31mFalha ao recriar o ambiente virtual.\033[0m")
+            sys.exit(1)
+
+    if os.path.isfile(requirements_path) and _needs_pip(venv_dir, requirements_path):
+        is_first = not os.path.isfile(os.path.join(venv_dir, ".boh_reqs_hash"))
+        if is_first:
+            print("\033[36mInstalando dependencias...\033[0m")
+        else:
+            print("\033[36mAtualizando dependencias...\033[0m")
+        _install_deps(venv_python, requirements_path, quiet=not is_first)
+        with open(os.path.join(venv_dir, ".boh_reqs_hash"), "w", encoding="utf-8") as f:
+            f.write(_reqs_hash(requirements_path))
+        print("\033[32mProntinho!\033[0m")
+
+    args = [venv_python, os.path.abspath(__file__)] + sys.argv[1:]
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    if os.name == "nt":
+        try:
+            result = subprocess.run(args)
+            sys.exit(result.returncode)
+        except KeyboardInterrupt:
+            sys.exit(130)
+    else:
+        os.execv(venv_python, args)
+
+
+_ensure_venv()
+
+try:
+    from blessed import Terminal
+    from pygame import mixer, error as pygame_error
+except ImportError as exc:
+    print(f"\033[31mDependencia faltando: {exc.name}\033[0m")
+    print("Tente deletar a pasta .venv e rodar o script novamente.")
+    sys.exit(1)
 
 term = Terminal()
 
