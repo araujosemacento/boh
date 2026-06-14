@@ -3,6 +3,7 @@
 	import ProjectCard from '$lib/components/ProjectCard.svelte';
 	import TerminalPlayer from '$lib/components/TerminalPlayer.svelte';
 	import type { Project } from '$lib/content/project';
+	import { Plus, Upload } from 'lucide-svelte';
 
 	let activeProject = $state<Project | null>(null);
 	let showPlayer = $state(false);
@@ -53,18 +54,22 @@
 {#if showPlayer && activeProject}
 	<TerminalPlayer project={activeProject} onClose={handleClosePlayer} />
 {:else}
-	<div class="min-h-screen bg-gray-950 p-8">
+	<div class="min-h-screen p-8" style:background-color="var(--ctp-base)" style:color="var(--ctp-text)">
 		<div class="mx-auto max-w-6xl">
 			<header class="mb-8 flex items-center justify-between">
 				<div>
-					<h1 class="text-3xl font-bold text-white">Projetos</h1>
-					<p class="mt-2 text-gray-400">Gerencie e reproduza seus projetos interativos</p>
+					<h1 class="text-3xl font-bold" style:color="var(--ctp-text)">Projetos</h1>
+					<p class="mt-2" style:color="var(--ctp-subtext0)">Gerencie e reproduza seus projetos interativos</p>
 				</div>
 				<div class="flex gap-3">
 					<button
 						onclick={handleImport}
-						class="rounded-lg border border-gray-600 bg-gray-800 px-4 py-2 text-sm text-gray-200 transition-colors hover:bg-gray-700"
+						class="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm transition-colors duration-200 hover:opacity-80"
+						style:border-color="var(--ctp-surface1)"
+						style:color="var(--ctp-text)"
+						style:background-color="var(--ctp-surface0)"
 					>
+						<Upload class="h-4 w-4" />
 						Importar
 					</button>
 				</div>
@@ -81,12 +86,12 @@
 
 				<!-- New Project Card -->
 				<button
-					class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-700 bg-gray-900/50 p-6 text-gray-400 transition-all hover:border-gray-500 hover:text-gray-200"
+					class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-all duration-300 hover:border-solid hover:opacity-80"
+					style:border-color="var(--ctp-surface1)"
+					style:color="var(--ctp-subtext0)"
 					onclick={() => alert('Criacao de projetos ainda nao implementada')}
 				>
-					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="mb-2 h-12 w-12">
-						<path fill-rule="evenodd" d="M12 3.75a.75.75 0 01.75.75v6.75h6.75a.75.75 0 010 1.5h-6.75v6.75a.75.75 0 01-1.5 0v-6.75H3.75a.75.75 0 010-1.5h6.75V4.5a.75.75 0 01.75-.75z" clip-rule="evenodd" />
-					</svg>
+					<Plus class="mb-2 h-12 w-12" />
 					<span class="text-sm font-medium">Novo Projeto</span>
 				</button>
 			</div>

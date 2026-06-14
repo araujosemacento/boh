@@ -1,2 +1,69 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
+
+/* Catppuccin CSS Variables - will be overwritten by theme store */
+:root {
+	--ctp-base: #1e1e2e;
+	--ctp-surface0: #313244;
+	--ctp-surface1: #45475a;
+	--ctp-surface2: #585b70;
+	--ctp-text: #cdd6f4;
+	--ctp-subtext0: #a6adc8;
+	--ctp-subtext1: #bac2de;
+	--ctp-overlay0: #6c7086;
+	--ctp-overlay1: #7f849c;
+	--ctp-mantle: #181825;
+	--ctp-crust: #11111b;
+	--ctp-pink: #f5c2e7;
+	--ctp-mauve: #cba6f7;
+	--ctp-red: #f38ba8;
+	--ctp-maroon: #eba0ac;
+	--ctp-peach: #fab387;
+	--ctp-yellow: #f9e2af;
+	--ctp-green: #a6e3a1;
+	--ctp-teal: #94e2d5;
+	--ctp-sky: #89dceb;
+	--ctp-sapphire: #74c7ec;
+	--ctp-blue: #89b4fa;
+	--ctp-lavender: #b4befe;
+}
+
+/* Global theme transition - applied to all color transitions */
+html,
+body,
+* {
+	transition-property: background-color, border-color, color, fill, stroke, box-shadow;
+	transition-timing-function: ease;
+	transition-duration: 0s;
+}
+
+/* When transitioning theme, apply a longer duration */
+html.transitioning-theme,
+html.transitioning-theme body,
+html.transitioning-theme * {
+	transition-duration: 350ms !important;
+}
+
+/* Terminal font */
+.font-terminal {
+	font-family: 'Courier New', Courier, 'Lucida Console', monospace;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--ctp-crust);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--ctp-surface2);
+	border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--ctp-overlay0);
+}
