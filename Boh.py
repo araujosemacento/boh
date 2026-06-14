@@ -3,81 +3,179 @@ import os
 import shutil
 import subprocess
 import sys
-
+from pathlib import Path
 from re import match, sub
 from time import sleep, time as current_time
 from random import choice
 from os import path, makedirs, listdir
 
+# Bootstrap de ambiente virtual
+# Este script exige Python 3.13 para criar o ambiente virtual e rodar.
+# Se o 3.13 nao estiver instalado, instrucoes especificas por SO sao exibidas.
 
-def _venv_python(venv_dir: str) -> str:
+_REQUIRED_PYTHON = "3.13"
+_VENV_DIR = Path(__file__).resolve().parent / ".venv"
+_REQ_FILE = Path(__file__).resolve().parent / "requirements.txt"
+
+
+def _print_install_instructions():
+    """Imprime instrucoes de instalacao do Python 3.13 e encerra o programa."""
+    msg = [
+        "",
+        "============================================================",
+        "               PYTHON 3.13 NAO ENCONTRADO",
+        "============================================================",
+        "",
+        f"Este projeto requer Python {_REQUIRED_PYTHON} para funcionar.",
+        "Por favor, instale-o antes de continuar.",
+        "",
+    ]
+
     if os.name == "nt":
-        return os.path.join(venv_dir, "Scripts", "python.exe")
-    return os.path.join(venv_dir, "bin", "python")
+        msg.extend([
+            "[Windows]",
+            "1. Acesse o site oficial de downloads do Python:",
+            "   https://www.python.org/downloads/release/python-3130/",
+            "",
+            "2. Role ate 'Windows installer (64-bit)' e baixe o executavel.",
+            "",
+            "3. Durante a instalacao, MARQUE a opcao:",
+            "   [x] Add Python to PATH",
+            "",
+            "4. Clique em 'Install Now' e aguarde a conclusao.",
+            "",
+            "5. Apos a instalacao, feche e reabra o terminal/VS Code",
+            "   e execute este script novamente.",
+        ])
+    elif sys.platform == "darwin":
+        msg.extend([
+            "[macOS]",
+            "1. Acesse o site oficial de downloads do Python:",
+            "   https://www.python.org/downloads/release/python-3130/",
+            "",
+            "2. Baixe o instalador 'macOS 64-bit universal2 installer'.",
+            "",
+            "3. Abra o .pkg baixado e siga as instrucoes do assistente.",
+            "",
+            "4. Apos a instalacao, reabra o terminal e execute",
+            "   este script novamente.",
+            "",
+            "   Alternativa (Homebrew):",
+            "   brew install python@3.13",
+        ])
+    else:
+        msg.extend([
+            "[Linux]",
+            "Instale Python 3.13 usando o gerenciador de pacotes da sua distro:",
+            "",
+            "   Debian/Ubuntu:",
+            "   sudo apt update && sudo apt install python3.13 python3.13-venv python3.13-pip",
+            "",
+            "   Fedora/RHEL:",
+            "   sudo dnf install python3.13 python3.13-devel",
+            "",
+            "   Arch Linux:",
+            "   sudo pacman -S python",
+            "",
+            "Apos a instalacao, execute este script novamente.",
+        ])
+
+    print("\n".join(msg))
+    sys.exit(1)
 
 
-def _reqs_hash(requirements_path: str) -> str:
-    with open(requirements_path, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()
+def _find_python(version_str: str) -> str | None:
+    """Tenta encontrar o executavel do Python da versao especificada."""
+    candidates = []
 
+    if os.name == "nt":
+        localappdata = os.environ.get("LOCALAPPDATA", "")
+        candidates = [
+            rf"C:\Python{version_str.replace('.', '')}\python.exe",
+            os.path.join(
+                localappdata,
+                fr"Programs\Python\Python{version_str.replace('.', '')}\python.exe",
+            ),
+        ]
+    else:
+        candidates = [
+            f"/usr/bin/python{version_str}",
+            f"/usr/local/bin/python{version_str}",
+            f"/opt/python{version_str}/bin/python{version_str}",
+            f"/opt/homebrew/bin/python{version_str}",
+        ]
 
-def _needs_pip(venv_dir: str, requirements_path: str) -> bool:
-    marker = os.path.join(venv_dir, ".boh_reqs_hash")
-    if not os.path.isfile(marker):
-        return True
-    with open(marker, "r", encoding="utf-8") as f:
-        stored = f.read().strip()
-    return stored != _reqs_hash(requirements_path)
+    for exe in candidates:
+        if os.path.isfile(exe):
+            return exe
 
+    # py launcher (Windows)
+    if os.name == "nt":
+        try:
+            result = subprocess.run(
+                ["py", f"-{version_str}", "-c", "import sys; print(sys.executable)"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                exec_path = result.stdout.strip()
+                if os.path.isfile(exec_path):
+                    return exec_path
+        except FileNotFoundError:
+            pass
 
-def _install_deps(venv_python: str, requirements_path: str, *, quiet: bool = False) -> None:
-    cmd = [venv_python, "-m", "pip", "install", "-r", requirements_path]
-    if quiet:
-        cmd.append("-q")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        print("\033[31mErro ao instalar dependencias. Verifique sua conexao ou a compatibilidade do Python com os pacotes necessarios.\033[0m")
-        if result.stderr:
-            print(result.stderr)
-        sys.exit(1)
+    return None
 
 
 def _ensure_venv() -> None:
+    # Ja esta dentro do venv? Nao faz nada
     if sys.prefix != sys.base_prefix:
         return
 
-    base = os.path.dirname(os.path.abspath(__file__))
-    venv_dir = os.path.join(base, ".venv")
-    requirements_path = os.path.join(base, "requirements.txt")
-    venv_python = _venv_python(venv_dir)
+    python_exe = _find_python(_REQUIRED_PYTHON)
+    if not python_exe:
+        _print_install_instructions()
 
-    if not os.path.isdir(venv_dir):
-        print("\033[36mPrimeira vez? Deixa eu preparar tudinho...\033[0m")
-        result = subprocess.run([sys.executable, "-m", "venv", venv_dir])
+    venv_python = _VENV_DIR / ("Scripts" if os.name == "nt" else "bin") / "python.exe"
+
+    # Recria venv se estiver corrompido
+    if _VENV_DIR.exists() and not venv_python.exists():
+        shutil.rmtree(_VENV_DIR, ignore_errors=True)
+
+    if not _VENV_DIR.exists():
+        print("Criando ambiente virtual Python 3.13...")
+        result = subprocess.run([python_exe, "-m", "venv", str(_VENV_DIR)])
         if result.returncode != 0:
-            print("\033[31mFalha ao criar o ambiente virtual.\033[0m")
+            print("Falha ao criar o ambiente virtual.")
             sys.exit(1)
+        print("Ambiente virtual criado.")
 
-    if not os.path.isfile(venv_python):
-        print("\033[31m.venv esta corrompido. Recriando...\033[0m")
-        shutil.rmtree(venv_dir, ignore_errors=True)
-        result = subprocess.run([sys.executable, "-m", "venv", venv_dir])
-        if result.returncode != 0:
-            print("\033[31mFalha ao recriar o ambiente virtual.\033[0m")
-            sys.exit(1)
+    # Instala/Atualiza dependencias
+    if _REQ_FILE.exists():
+        marker = _VENV_DIR / ".boh_reqs_hash"
+        current_hash = hashlib.sha256(_REQ_FILE.read_bytes()).hexdigest()
+        stored = ""
+        if marker.exists():
+            stored = marker.read_text().strip()
 
-    if os.path.isfile(requirements_path) and _needs_pip(venv_dir, requirements_path):
-        is_first = not os.path.isfile(os.path.join(venv_dir, ".boh_reqs_hash"))
-        if is_first:
-            print("\033[36mInstalando dependencias...\033[0m")
-        else:
-            print("\033[36mAtualizando dependencias...\033[0m")
-        _install_deps(venv_python, requirements_path, quiet=not is_first)
-        with open(os.path.join(venv_dir, ".boh_reqs_hash"), "w", encoding="utf-8") as f:
-            f.write(_reqs_hash(requirements_path))
-        print("\033[32mProntinho!\033[0m")
+        if stored != current_hash:
+            if not stored:
+                print("Instalando dependencias...")
+            else:
+                print("Atualizando dependencias...")
 
-    args = [venv_python, os.path.abspath(__file__)] + sys.argv[1:]
+            result = subprocess.run(
+                [str(venv_python), "-m", "pip", "install", "-r", str(_REQ_FILE)]
+            )
+            if result.returncode != 0:
+                print("Falha ao instalar dependencias.")
+                sys.exit(1)
+            marker.write_text(current_hash, encoding="utf-8")
+            print("Dependencias prontas!")
+
+    # Re-executa dentro do venv
+    args = [str(venv_python), os.path.abspath(__file__)] + sys.argv[1:]
     sys.stdout.flush()
     sys.stderr.flush()
 
@@ -88,7 +186,7 @@ def _ensure_venv() -> None:
         except KeyboardInterrupt:
             sys.exit(130)
     else:
-        os.execv(venv_python, args)
+        os.execv(str(venv_python), args)
 
 
 _ensure_venv()
@@ -97,7 +195,7 @@ try:
     from blessed import Terminal
     from pygame import mixer, error as pygame_error
 except ImportError as exc:
-    print(f"\033[31mDependencia faltando: {exc.name}\033[0m")
+    print(f"Dependencia faltando: {exc.name}")
     print("Tente deletar a pasta .venv e rodar o script novamente.")
     sys.exit(1)
 
