@@ -1,53 +1,240 @@
-from sys import exit as sys_exit
-from subprocess import run
-from importlib.util import find_spec
+import hashlib
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
 from re import match, sub
 from time import sleep, time as current_time
 from random import choice
 from os import path, makedirs, listdir
 
+# Bootstrap de ambiente virtual
+# Este script exige Python 3.13 para criar o ambiente virtual e rodar.
+# Se o 3.13 nao estiver instalado, instrucoes especificas por SO sao exibidas.
 
-def check_dependencies() -> None:
-    modules = ["blessed", "pygame"]
+_REQUIRED_PYTHON = "3.13"
+_VENV_DIR = Path(__file__).resolve().parent / ".venv"
+_REQ_FILE = Path(__file__).resolve().parent / "requirements.txt"
 
-    for module in modules:
-        if find_spec(module) is None:
+
+def _print_install_instructions():
+    """Imprime instrucoes de instalacao do Python 3.13 e encerra o programa."""
+    msg = [
+        "",
+        "============================================================",
+        "               PYTHON 3.13 NAO ENCONTRADO",
+        "============================================================",
+        "",
+        f"Este projeto requer Python {_REQUIRED_PYTHON} para funcionar.",
+        "Por favor, instale-o antes de continuar.",
+        "",
+    ]
+
+    if os.name == "nt":
+        msg.extend([
+            "[Windows]",
+            "1. Acesse o site oficial de downloads do Python:",
+            "   https://www.python.org/downloads/release/python-3130/",
+            "",
+            "2. Role ate 'Windows installer (64-bit)' e baixe o executavel.",
+            "",
+            "3. Durante a instalacao, MARQUE a opcao:",
+            "   [x] Add Python to PATH",
+            "",
+            "4. Clique em 'Install Now' e aguarde a conclusao.",
+            "",
+            "5. Apos a instalacao, feche e reabra o terminal/VS Code",
+            "   e execute este script novamente.",
+        ])
+    elif sys.platform == "darwin":
+        msg.extend([
+            "[macOS]",
+            "1. Acesse o site oficial de downloads do Python:",
+            "   https://www.python.org/downloads/release/python-3130/",
+            "",
+            "2. Baixe o instalador 'macOS 64-bit universal2 installer'.",
+            "",
+            "3. Abra o .pkg baixado e siga as instrucoes do assistente.",
+            "",
+            "4. Apos a instalacao, reabra o terminal e execute",
+            "   este script novamente.",
+            "",
+            "   Alternativa (Homebrew):",
+            "   brew install python@3.13",
+        ])
+    else:
+        msg.extend([
+            "[Linux]",
+            "Instale Python 3.13 usando o gerenciador de pacotes da sua distro:",
+            "",
+            "   Debian/Ubuntu:",
+            "   sudo apt update && sudo apt install python3.13 python3.13-venv python3.13-pip",
+            "",
+            "   Fedora/RHEL:",
+            "   sudo dnf install python3.13 python3.13-devel",
+            "",
+            "   Arch Linux:",
+            "   sudo pacman -S python",
+            "",
+            "Apos a instalacao, execute este script novamente.",
+        ])
+
+    print("\n".join(msg))
+    sys.exit(1)
+
+
+def _find_python(version_str: str) -> str | None:
+    """Tenta encontrar o executavel do Python da versao especificada."""
+    candidates = []
+
+    if os.name == "nt":
+        localappdata = os.environ.get("LOCALAPPDATA", "")
+        candidates = [
+            rf"C:\Python{version_str.replace('.', '')}\python.exe",
+            os.path.join(
+                localappdata,
+                fr"Programs\Python\Python{version_str.replace('.', '')}\python.exe",
+            ),
+        ]
+    else:
+        candidates = [
+            f"/usr/bin/python{version_str}",
+            f"/usr/local/bin/python{version_str}",
+            f"/opt/python{version_str}/bin/python{version_str}",
+            f"/opt/homebrew/bin/python{version_str}",
+        ]
+
+    for exe in candidates:
+        if os.path.isfile(exe):
+            return exe
+
+    # py launcher (Windows)
+    if os.name == "nt":
+        try:
+            result = subprocess.run(
+                ["py", f"-{version_str}", "-c", "import sys; print(sys.executable)"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if result.returncode == 0:
+                exec_path = result.stdout.strip()
+                if os.path.isfile(exec_path):
+                    return exec_path
+        except FileNotFoundError:
+            pass
+
+    return None
+
+
+def _ensure_venv() -> None:
+    # 1. Checa se o script está rodando DE DENTRO de um ambiente virtual ativo
+    if sys.prefix != sys.base_prefix:
+        current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        if current_version != _REQUIRED_PYTHON:
+            print("\n\033[1;31m[ERRO] Ambiente virtual ativo incompatível!\033[0m")
+            print(f"Você está com um ambiente virtual ativado usando Python {current_version}.")
+            print(f"Este projeto exige exclusivamente Python {_REQUIRED_PYTHON}.")
+            print("\nPor favor, desative-o executando o comando:")
+            print("  deactivate")
+            print("\nEm seguida, apague a pasta .venv e rode este script novamente.\n")
+            sys.exit(1)
+        return
+
+    python_exe = _find_python(_REQUIRED_PYTHON)
+    if not python_exe:
+        _print_install_instructions()
+
+    # Corrigido: Linux/Mac não usam ".exe"
+    exe_name = "python.exe" if os.name == "nt" else "python"
+    venv_python = _VENV_DIR / ("Scripts" if os.name == "nt" else "bin") / exe_name
+
+    # 2. Verifica a integridade e versão de um .venv já existente na pasta
+    if _VENV_DIR.exists():
+        recreate = False
+        if not venv_python.exists():
+            recreate = True  # Pasta existe, mas está corrompida/sem executável
+        else:
+            # Puxa a versão de dentro do venv existente
             try:
-                import tkinter as tk
-                from tkinter import messagebox
+                res = subprocess.run(
+                    [str(venv_python), "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"],
+                    capture_output=True, text=True
+                )
+                venv_version = res.stdout.strip() if res.returncode == 0 else None
+            except Exception:
+                venv_version = None
 
-                root = tk.Tk()
-                root.withdraw()
+            if venv_version != _REQUIRED_PYTHON:
+                print(f"Aviso: O ambiente virtual atual usa Python {venv_version}.")
+                print(f"Ele será removido e recriado com Python {_REQUIRED_PYTHON}...")
+                recreate = True
 
-                message = f"Oi, tudo bem?\nEntão, o Boh meio que precisa\ndesse módulo pra te entender\ne ficar bonitinho\n conversando com você:\n\n{module}\n\nQuer que eu instale ele por você?"
+        if recreate:
+            try:
+                shutil.rmtree(_VENV_DIR)
+            except PermissionError:
+                print("\n\033[1;31m[ERRO] Não foi possível remover a pasta .venv antiga.\033[0m")
+                print("Provavelmente o ambiente virtual está ativo em outro terminal ou editor (como o VS Code).")
+                print("Por favor, feche as abas de terminal abertas, digite 'deactivate', ou apague a pasta manualmente e tente novamente.\n")
+                sys.exit(1)
 
-                result = messagebox.askyesno("Dependências Faltando", message)
+    # 3. Cria o ambiente virtual se necessário
+    if not _VENV_DIR.exists():
+        print(f"Criando ambiente virtual Python {_REQUIRED_PYTHON}...")
+        result = subprocess.run([python_exe, "-m", "venv", str(_VENV_DIR)])
+        if result.returncode != 0:
+            print("Falha ao criar o ambiente virtual.")
+            sys.exit(1)
+        print("Ambiente virtual criado.")
 
-                if result:
-                    cmd = f"pip install {module}"
-                    print(f"\033[31mShow de Bola!\033[0m Executando: {cmd}\n")
-                    run(cmd, shell=True)
-                    print(
-                        "\n\033[34mReinicie o script após a instalação, beleza?\033[0m"
-                    )
-                else:
-                    print(
-                        f"\n\033[31mInstalação cancelada :(\033[0m\nSe quiser instalar depois, por conta própria,\nexecute:\n\n\033[34mpip install {module}\033[0m\n"
-                    )
+    # 4. Instala/Atualiza dependencias
+    if _REQ_FILE.exists():
+        marker = _VENV_DIR / ".boh_reqs_hash"
+        current_hash = hashlib.sha256(_REQ_FILE.read_bytes()).hexdigest()
+        stored = ""
+        if marker.exists():
+            stored = marker.read_text().strip()
 
-                root.destroy()
-                sys_exit()
+        if stored != current_hash:
+            if not stored:
+                print("Instalando dependencias...")
+            else:
+                print("Atualizando dependencias...")
 
-            except ImportError:
-                print(f"Módulos faltando: {module}")
-                print(f"Execute: pip install {module}")
-                sys_exit()
+            result = subprocess.run(
+                [str(venv_python), "-m", "pip", "install", "-r", str(_REQ_FILE)]
+            )
+            if result.returncode != 0:
+                print("Falha ao instalar dependencias.")
+                sys.exit(1)
+            marker.write_text(current_hash, encoding="utf-8")
+            print("Dependencias prontas!")
 
+    # 5. Re-executa dentro do venv
+    args = [str(venv_python), os.path.abspath(__file__)] + sys.argv[1:]
+    sys.stdout.flush()
+    sys.stderr.flush()
 
-check_dependencies()
+    if os.name == "nt":
+        try:
+            result = subprocess.run(args)
+            sys.exit(result.returncode)
+        except KeyboardInterrupt:
+            sys.exit(130)
+    else:
+        os.execv(str(venv_python), args)
 
-from blessed import Terminal
-from pygame import mixer, error as pygame_error
+_ensure_venv()
+
+try:
+    from blessed import Terminal
+    from pygame import mixer, error as pygame_error
+except ImportError as exc:
+    print(f"Dependencia faltando: {exc.name}")
+    print("Tente deletar a pasta .venv e rodar o script novamente.")
+    sys.exit(1)
 
 term = Terminal()
 
