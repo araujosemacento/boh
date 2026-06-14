@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Svelte 5 web application that reimagines the legacy Python terminal-based interactive educational experience `Boh.py` as a modern web app. The original script featured a character named BOH (ASCII art), interactive dialogue, sound effects, and visual explanations of computer science concepts (specifically, reversing a doubly linked list). The goal is to build an extensible platform for interactive tutorials, styled to look like a terminal window using Tailwind CSS.
+This is a Svelte 5 web application that reimagines the legacy Python terminal-based interactive educational experience `Boh.py` as a modern web app. The application is structured as a **project management platform** for interactive tutorials, styled to look like a terminal window using Tailwind CSS.
+
+**Current architecture**: The app has a **home screen** that displays projects in a grid. Each project is an self-contained interactive narrative (the legacy "chapter" concept). The user can play a project (opens a terminal player), edit it (future), or create a new one (future).
 
 **Tech stack**: Svelte 5, SvelteKit (static adapter), TypeScript, Tailwind CSS (with typography plugin), Vite, Vitest, Playwright. Package manager: `bun`.
 
@@ -41,44 +43,40 @@ bun run test           # Run all tests
 
 The project follows a strict layering to support the extensible platform goal:
 
-### Content Layer (`src/lib/content/`)
-Contains all game/story data, completely decoupled from rendering logic.
-- `types.ts` — Core TypeScript interfaces for the dialogue engine (Step, Chapter, etc.)
-- `characters.ts` — ASCII art and expression data for characters (BOH, AUX)
-- `chapters/` — Individual chapter files; each defines a graph of narrative steps. The engine walks this graph to drive the story.
+### Home Screen (`src/routes/+page.svelte`)
+The main landing page. Shows a grid of existing projects plus a "New Project" placeholder card.
+- **Import/Export**: JSON-based project import/export via file picker.
+- **Project cards**: Hovering a card reveals Play and Edit buttons.
 
-Use this layer for: adding new chapters, modifying character art, changing dialogue text, adding new expressions.
+### Project Layer (`src/lib/stores/` & `src/lib/content/`)
+Projects are stored in `localStorage` and managed reactively.
+- `projectStore.svelte.ts` — Svelte 5 store with CRUD operations, import/export, and persistence.
+- `project.ts` — TypeScript interfaces for `Project` and `ProjectExport`.
+- `types.ts` — Core step types for the narrative engine (`dialogue`, `choice`, `input`, `animation`, `pause`).
+- `characters.ts` — Character definitions (BOH, AUX) with ASCII art and expression frames.
 
 ### Engine Layer (`src/lib/engine/`)
 The state machine that drives narrative progression.
-- `storyEngine.ts` — Core state machine. Holds current step, exposes `next()`, `skip()`, `reset()`, and choice resolution methods. Reactive via Svelte 5 runes.
-- `dialogueStore.ts` — Svelte 5 store for the currently active dialogue state (text, expression, typing state, etc.)
-- `audioManager.ts` — Modular audio wrapper using the Web Audio API. Loads from `static/assets/audio/` and maps sound keys to file paths for easy swappability.
-
-Use this layer for: changing how the narrative advances, adding new step types, modifying sound playback logic.
+- `storyEngine.svelte.ts` — Core state machine using Svelte 5 runes. Holds current step, typed text, typing state. Methods: `init()`, `goToStep()`, `skip()`, `advance()`, `selectChoice()`, `submitInput()`.
+- `audioManager.ts` — Modular audio wrapper using the Web Audio API. Loads from `static/assets/audio/` and maps sound keys to file paths.
 
 ### Component Layer (`src/lib/components/`)
 Presentational components. All styling uses Tailwind CSS. No ANSI codes.
-- `TerminalWindow.svelte` — The root "terminal" visual container (window chrome, title bar, CRT aesthetic)
-- `DialogueBox.svelte` — Main interaction area. Renders the current speaker, text, and optional static art.
-- `TypingText.svelte` — Handles the character-by-character typing animation with configurable speed.
-- `CharacterAvatar.svelte` — Renders the current character expression using `<pre>` tags to preserve ASCII spacing.
-- `UserPrompt.svelte` — Renders choice buttons (S/N, or others) when the engine is in a choice state. Handles keyboard events and optional timeouts.
-- `DataStructureView.svelte` — Renders algorithmic visualizations (linked lists, etc.) using DOM elements and Tailwind classes instead of raw text.
+- `ProjectCard.svelte` — Card displayed in the home grid. Shows title, description, step count. Hover overlay reveals Play and Edit buttons.
+- `TerminalPlayer.svelte` — Full-screen terminal window player. Shows title bar (with close button), character expression, typed dialogue text, static art, and choice buttons. Click or press Enter/Space to advance. Press Escape or close button to return to home.
 
 ### Legacy Files
-- `legacy/Boh.py` — The original Python script. Do **not modify**. Extract content by copying and adapting to the web format.
+- `legacy/Boh.py` — The original Python script. **Do not modify.** Extract content by copying and adapting to the web format.
 - `legacy/sfx/` — Original sound effects. Copied to `static/assets/audio/` as placeholders.
 
 ## Important Notes
 
 - **No ANSI codes**: All colorization is done via Tailwind classes (e.g., `text-green-400`, `text-blue-400`).
 - **ASCII integrity**: When displaying ASCII art, always use `<pre>` tags with a monospace font to preserve spacing.
-- **Extensibility**: New chapters are added by creating a new file in `src/lib/content/chapters/` and registering it. The engine should not need changes.
-- **Audio modular**: The `AudioManager` uses a key-to-filepath mapping. To replace sounds, change the mapping or replace files in `static/assets/audio/` without touching code.
-- **State machine driven**: The narrative is driven by a declarative step graph, not hardcoded procedural logic. Branching (if user says Yes/No, timeout, invalid input) is handled by the engine walking the step graph.
+- **State machine driven**: The narrative is driven by a declarative step graph. Branching (Yes/No, timeout) is handled by the engine walking the graph.
+- **Home screen is the entry point**: `/` shows the project grid. The terminal player is an overlay that appears when a project is played.
 
 ## Routing
 
-- `/` — The main app page where the terminal experience lives.
+- `/` — Home screen with the project grid.
 - `/demo/playwright` — Autogenerated demo page (can be removed later).
