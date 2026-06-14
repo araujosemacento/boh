@@ -129,29 +129,67 @@ def _find_python(version_str: str) -> str | None:
 
 
 def _ensure_venv() -> None:
-    # Ja esta dentro do venv? Nao faz nada
+    # 1. Checa se o script está rodando DE DENTRO de um ambiente virtual ativo
     if sys.prefix != sys.base_prefix:
+        current_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        if current_version != _REQUIRED_PYTHON:
+            print("\n\033[1;31m[ERRO] Ambiente virtual ativo incompatível!\033[0m")
+            print(f"Você está com um ambiente virtual ativado usando Python {current_version}.")
+            print(f"Este projeto exige exclusivamente Python {_REQUIRED_PYTHON}.")
+            print("\nPor favor, desative-o executando o comando:")
+            print("  deactivate")
+            print("\nEm seguida, apague a pasta .venv e rode este script novamente.\n")
+            sys.exit(1)
         return
 
     python_exe = _find_python(_REQUIRED_PYTHON)
     if not python_exe:
         _print_install_instructions()
 
-    venv_python = _VENV_DIR / ("Scripts" if os.name == "nt" else "bin") / "python.exe"
+    # Corrigido: Linux/Mac não usam ".exe"
+    exe_name = "python.exe" if os.name == "nt" else "python"
+    venv_python = _VENV_DIR / ("Scripts" if os.name == "nt" else "bin") / exe_name
 
-    # Recria venv se estiver corrompido
-    if _VENV_DIR.exists() and not venv_python.exists():
-        shutil.rmtree(_VENV_DIR, ignore_errors=True)
+    # 2. Verifica a integridade e versão de um .venv já existente na pasta
+    if _VENV_DIR.exists():
+        recreate = False
+        if not venv_python.exists():
+            recreate = True  # Pasta existe, mas está corrompida/sem executável
+        else:
+            # Puxa a versão de dentro do venv existente
+            try:
+                res = subprocess.run(
+                    [str(venv_python), "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"],
+                    capture_output=True, text=True
+                )
+                venv_version = res.stdout.strip() if res.returncode == 0 else None
+            except Exception:
+                venv_version = None
 
+            if venv_version != _REQUIRED_PYTHON:
+                print(f"Aviso: O ambiente virtual atual usa Python {venv_version}.")
+                print(f"Ele será removido e recriado com Python {_REQUIRED_PYTHON}...")
+                recreate = True
+
+        if recreate:
+            try:
+                shutil.rmtree(_VENV_DIR)
+            except PermissionError:
+                print("\n\033[1;31m[ERRO] Não foi possível remover a pasta .venv antiga.\033[0m")
+                print("Provavelmente o ambiente virtual está ativo em outro terminal ou editor (como o VS Code).")
+                print("Por favor, feche as abas de terminal abertas, digite 'deactivate', ou apague a pasta manualmente e tente novamente.\n")
+                sys.exit(1)
+
+    # 3. Cria o ambiente virtual se necessário
     if not _VENV_DIR.exists():
-        print("Criando ambiente virtual Python 3.13...")
+        print(f"Criando ambiente virtual Python {_REQUIRED_PYTHON}...")
         result = subprocess.run([python_exe, "-m", "venv", str(_VENV_DIR)])
         if result.returncode != 0:
             print("Falha ao criar o ambiente virtual.")
             sys.exit(1)
         print("Ambiente virtual criado.")
 
-    # Instala/Atualiza dependencias
+    # 4. Instala/Atualiza dependencias
     if _REQ_FILE.exists():
         marker = _VENV_DIR / ".boh_reqs_hash"
         current_hash = hashlib.sha256(_REQ_FILE.read_bytes()).hexdigest()
@@ -174,7 +212,7 @@ def _ensure_venv() -> None:
             marker.write_text(current_hash, encoding="utf-8")
             print("Dependencias prontas!")
 
-    # Re-executa dentro do venv
+    # 5. Re-executa dentro do venv
     args = [str(venv_python), os.path.abspath(__file__)] + sys.argv[1:]
     sys.stdout.flush()
     sys.stderr.flush()
@@ -187,7 +225,6 @@ def _ensure_venv() -> None:
             sys.exit(130)
     else:
         os.execv(str(venv_python), args)
-
 
 _ensure_venv()
 
