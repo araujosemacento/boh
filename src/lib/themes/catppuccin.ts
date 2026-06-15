@@ -1,4 +1,6 @@
 // Catppuccin color palettes
+// Source: https://github.com/catppuccin/palette (v1.8.0)
+// https://catppuccin.com/palette
 export type Flavor = 'latte' | 'frappe' | 'macchiato' | 'mocha';
 export type ThemeOption = 'system' | Flavor;
 
@@ -18,19 +20,10 @@ export const flavorDescriptions: Record<Flavor, string> = {
 	mocha: 'Escuro e elegante',
 };
 
+// Complete Catppuccin palette (26 colors per flavor)
 export interface Palette {
-	ctp: Record<string, string>;
-	base: string;
-	surface0: string;
-	surface1: string;
-	surface2: string;
-	text: string;
-	subtext0: string;
-	subtext1: string;
-	overlay0: string;
-	overlay1: string;
-	mantle: string;
-	crust: string;
+	rosewater: string;
+	flamingo: string;
 	pink: string;
 	mauve: string;
 	red: string;
@@ -43,23 +36,54 @@ export interface Palette {
 	sapphire: string;
 	blue: string;
 	lavender: string;
+	text: string;
+	subtext1: string;
+	subtext0: string;
+	overlay2: string;
+	overlay1: string;
+	overlay0: string;
+	surface2: string;
+	surface1: string;
+	surface0: string;
+	base: string;
+	mantle: string;
+	crust: string;
 }
 
-// https://catppuccin.com/palette
+// Ordered list of all color keys in the palette (matches CSS variable naming)
+export const colorKeys: ReadonlyArray<keyof Palette> = [
+	'rosewater',
+	'flamingo',
+	'pink',
+	'mauve',
+	'red',
+	'maroon',
+	'peach',
+	'yellow',
+	'green',
+	'teal',
+	'sky',
+	'sapphire',
+	'blue',
+	'lavender',
+	'text',
+	'subtext1',
+	'subtext0',
+	'overlay2',
+	'overlay1',
+	'overlay0',
+	'surface2',
+	'surface1',
+	'surface0',
+	'base',
+	'mantle',
+	'crust',
+];
+
 export const palettes: Record<Flavor, Palette> = {
 	latte: {
-		ctp: {},
-		base: '#eff1f5',
-		surface0: '#ccd0da',
-		surface1: '#bcc0cc',
-		surface2: '#acb0be',
-		text: '#4c4f69',
-		subtext0: '#6c6f85',
-		subtext1: '#5c5f77',
-		overlay0: '#9ca0b0',
-		overlay1: '#8c909b',
-		mantle: '#e6e9ef',
-		crust: '#dce0e8',
+		rosewater: '#dc8a78',
+		flamingo: '#dd7878',
 		pink: '#ea76cb',
 		mauve: '#8839ef',
 		red: '#d20f39',
@@ -72,20 +96,22 @@ export const palettes: Record<Flavor, Palette> = {
 		sapphire: '#209fb5',
 		blue: '#1e66f5',
 		lavender: '#7287fd',
+		text: '#4c4f69',
+		subtext1: '#5c5f77',
+		subtext0: '#6c6f85',
+		overlay2: '#7c7f93',
+		overlay1: '#8c8fa1',
+		overlay0: '#9ca0b0',
+		surface2: '#acb0be',
+		surface1: '#bcc0cc',
+		surface0: '#ccd0da',
+		base: '#eff1f5',
+		mantle: '#e6e9ef',
+		crust: '#dce0e8',
 	},
 	frappe: {
-		ctp: {},
-		base: '#303446',
-		surface0: '#414559',
-		surface1: '#51576d',
-		surface2: '#626880',
-		text: '#c6d0f5',
-		subtext0: '#a5adce',
-		subtext1: '#b5bddf',
-		overlay0: '#737994',
-		overlay1: '#838ba7',
-		mantle: '#292c3c',
-		crust: '#232634',
+		rosewater: '#f2d5cf',
+		flamingo: '#eebebe',
 		pink: '#f4b8e4',
 		mauve: '#ca9ee6',
 		red: '#e78284',
@@ -97,21 +123,23 @@ export const palettes: Record<Flavor, Palette> = {
 		sky: '#99d1db',
 		sapphire: '#85c1dc',
 		blue: '#8caaee',
-		lavender: '#babbe1',
+		lavender: '#babbf1',
+		text: '#c6d0f5',
+		subtext1: '#b5bfe2',
+		subtext0: '#a5adce',
+		overlay2: '#949cbb',
+		overlay1: '#838ba7',
+		overlay0: '#737994',
+		surface2: '#626880',
+		surface1: '#51576d',
+		surface0: '#414559',
+		base: '#303446',
+		mantle: '#292c3c',
+		crust: '#232634',
 	},
 	macchiato: {
-		ctp: {},
-		base: '#24273a',
-		surface0: '#363a4f',
-		surface1: '#494d64',
-		surface2: '#5b6078',
-		text: '#cad3f5',
-		subtext0: '#a5adcb',
-		subtext1: '#b8c0e0',
-		overlay0: '#6e738d',
-		overlay1: '#8087a2',
-		mantle: '#1e2030',
-		crust: '#181926',
+		rosewater: '#f4dbd6',
+		flamingo: '#f0c6c6',
 		pink: '#f5bde6',
 		mauve: '#c6a0f6',
 		red: '#ed8796',
@@ -124,20 +152,22 @@ export const palettes: Record<Flavor, Palette> = {
 		sapphire: '#7dc4e4',
 		blue: '#8aadf4',
 		lavender: '#b7bdf8',
+		text: '#cad3f5',
+		subtext1: '#b8c0e0',
+		subtext0: '#a5adcb',
+		overlay2: '#939ab7',
+		overlay1: '#8087a2',
+		overlay0: '#6e738d',
+		surface2: '#5b6078',
+		surface1: '#494d64',
+		surface0: '#363a4f',
+		base: '#24273a',
+		mantle: '#1e2030',
+		crust: '#181926',
 	},
 	mocha: {
-		ctp: {},
-		base: '#1e1e2e',
-		surface0: '#313244',
-		surface1: '#45475a',
-		surface2: '#585b70',
-		text: '#cdd6f4',
-		subtext0: '#a6adc8',
-		subtext1: '#bac2de',
-		overlay0: '#6c7086',
-		overlay1: '#7f849c',
-		mantle: '#181825',
-		crust: '#11111b',
+		rosewater: '#f5e0dc',
+		flamingo: '#f2cdcd',
 		pink: '#f5c2e7',
 		mauve: '#cba6f7',
 		red: '#f38ba8',
@@ -150,5 +180,17 @@ export const palettes: Record<Flavor, Palette> = {
 		sapphire: '#74c7ec',
 		blue: '#89b4fa',
 		lavender: '#b4befe',
+		text: '#cdd6f4',
+		subtext1: '#bac2de',
+		subtext0: '#a6adc8',
+		overlay2: '#9399b2',
+		overlay1: '#7f849c',
+		overlay0: '#6c7086',
+		surface2: '#585b70',
+		surface1: '#45475a',
+		surface0: '#313244',
+		base: '#1e1e2e',
+		mantle: '#181825',
+		crust: '#11111b',
 	},
 };

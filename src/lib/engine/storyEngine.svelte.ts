@@ -1,44 +1,93 @@
-import type { Chapter, Step, DialogueStep, ChoiceStep, InputStep, PauseStep } from '$lib/content/types';
-import type { Character } from '$lib/content/characters';
+import type {
+	Chapter,
+	Step,
+	DialogueStep,
+	ChoiceStep,
+	InputStep,
+	PauseStep,
+	AnimationStep,
+} from '$lib/content/types';
+import type { AudioManager } from './audioManager';
 
 // This .svelte.ts file uses Svelte 5 runes for reactive state
 export class StoryEngine {
-	chapter: Chapter;
+	declare chapter: Chapter;
 
 	// Core state
 	currentStepId = $state<string>('');
-	currentStep = $derived<Step | null>(this.chapter.steps[this.currentStepId] ?? null);
+	get currentStep(): Step | null { return this.chapter.steps[this.currentStepId] ?? null; }
 
 	// UI state for the current step
 	typedText = $state<string>('');
 	isTyping = $state<boolean>(false);
 	isWaitingForInput = $state<boolean>(false);
+	isWaitingForChoice = $state<boolean>(false);
+	isWaitingForTextInput = $state<boolean>(false);
 
 	// Current visual state derived from the step
 	speaker = $state<string>('');
 	expression = $state<string>('');
 	staticArt = $state<string>('');
 	colorizeArrows = $state<boolean>(false);
+	promptText = $state<string>('');
 
-	private typingTimeout: number | null = null;
+	// Storage for user-provided text input (keyed by step id)
+	inputValues: Record<string, string> = {};
+
+	// Optional audio - injected to keep the engine decoupled from the AudioContext
+	audio: AudioManager | null = null;
+
+	private typingTimeout: ReturnType<typeof setTimeout> | null = null;
+	private paused: $state<boolean> = $state(false);
+	private choiceTimeoutHandle: ReturnType<typeof setTimeout> | null = null;
 	private typingSpeed = 30; // ms per character
 
-	constructor(chapter: Chapter) {
+	constructor(chapter: Chapter, audio: AudioManager | null = null) {
 		this.chapter = chapter;
+		this.audio = audio;
 	}
 
 	init() {
 		this.goToStep(this.chapter.initialStepId);
 	}
 
-	goToStep(stepId: string) {
+	reset() {
 		if (this.typingTimeout) {
 			clearTimeout(this.typingTimeout);
 			this.typingTimeout = null;
 		}
+		if (this.choiceTimeoutHandle) {
+			clearTimeout(this.choiceTimeoutHandle);
+			this.choiceTimeoutHandle = null;
+		}
 		this.typedText = '';
 		this.isTyping = false;
+		this.isWaitingForInput = false;
+		this.isWaitingForChoice = false;
+		this.isWaitingForTextInput = false;
+		this.colorizeArrows = false;
+		this.promptText = '';
+	}
+
+	private lastStepId: string = '';
+private repeatCount: number = 0;
+
+	goToStep(stepId: string) {
+		this.reset();
 		this.currentStepId = stepId;
+		// Loop detection guard
+		if (stepId === this.lastStepId) {
+			this.repeatCount++;
+			if (this.repeatCount > 1 && this.currentStep?.nextStepId && this.currentStep?.nextStepId !== stepId) {
+				this.lastStepId = '';
+				this.repeatCount = 0;
+				this.goToStep(this.currentStep.nextStepId);
+				return;
+			}
+		} else {
+			this.lastStepId = stepId;
+			this.repeatCount = 0;
+		}
 		const step = this.currentStep;
 		if (!step) return;
 
@@ -54,12 +103,24 @@ export class StoryEngine {
 				break;
 			case 'choice':
 				this.isWaitingForInput = true;
+				this.isWaitingForChoice = true;
+				this.promptText = (step as ChoiceStep).text || '';
+				if (step.timeout && step.timeoutTargetId) {
+					this.choiceTimeoutHandle = setTimeout(() => {
+						this.selectChoice(step.timeoutTargetId as string, true);
+					}, step.timeout * 1000);
+				}
 				break;
 			case 'input':
 				this.isWaitingForInput = true;
+				this.isWaitingForTextInput = true;
+				this.promptText = (step as InputStep).prompt;
+				break;
+			case 'animation':
+				this.runAnimation(step as AnimationStep);
 				break;
 			case 'pause':
-				setTimeout(() => {
+				this.typingTimeout = setTimeout(() => {
 					this.goToStep((step as PauseStep).nextStepId);
 				}, (step as PauseStep).duration * 1000);
 				break;
@@ -67,6 +128,10 @@ export class StoryEngine {
 	}
 
 	private startTyping(text: string, delay: number = 0.75) {
+        // Replace input placeholders like {{input:s11}} with stored values
+        const placeholderRegex = /{{input:([^}]+)}}/g;
+        const resolvedText = text.replace(placeholderRegex, (_, id) => this.inputValues[id] ?? '');
+        text = resolvedText;
 		this.isTyping = true;
 		let i = 0;
 		const chars = text.split('');
@@ -74,61 +139,100 @@ export class StoryEngine {
 		const typeNext = () => {
 			if (i < chars.length) {
 				this.typedText = chars.slice(0, i + 1).join('');
+				const lastChar = chars[i];
+				// Trigger typing sound for alphanumeric characters
+				if (lastChar && /\w/.test(lastChar)) {
+					this.audio?.playTyping();
+				}
 				i++;
-				// Play typing sound here (via AudioManager event)
-				this.typingTimeout = window.setTimeout(typeNext, this.typingSpeed);
+				this.typingTimeout = setTimeout(typeNext, this.typingSpeed);
 			} else {
 				this.isTyping = false;
-				if (this.currentStep?.type === 'dialogue') {
-					const d = this.currentStep as DialogueStep;
-					if (d.delay) {
-						this.typingTimeout = window.setTimeout(() => {
-							this.goToStep(d.nextStepId);
-						}, (d.delay ?? 0) * 1000);
+				const step = this.currentStep;
+				if (step?.type === 'dialogue') {
+					const wait = (step.delay ?? 0) * 1000;
+					if (wait > 0) {
+						this.typingTimeout = setTimeout(() => {
+							this.goToStep(step.nextStepId);
+						}, wait);
 					} else {
-						this.goToStep(d.nextStepId);
+						this.goToStep(step.nextStepId);
 					}
 				}
 			}
 		};
 
-		this.typingTimeout = window.setTimeout(typeNext, this.typingSpeed);
+		this.typingTimeout = setTimeout(typeNext, this.typingSpeed);
+	}
+
+	private runAnimation(step: AnimationStep) {
+		const frames = step.frames;
+		let i = 0;
+
+		const nextFrame = () => {
+			if (i < frames.length) {
+				this.typedText = frames[i].text;
+				const wait = Math.max(frames[i].delay * 1000, 10);
+				i++;
+				this.typingTimeout = setTimeout(nextFrame, wait);
+			} else {
+				this.goToStep(step.nextStepId);
+			}
+		};
+
+		// Render designated static art (for the "HA" laugh etc.)
+		this.staticArt = step.staticArt ?? '';
+		this.isTyping = true;
+		nextFrame();
 	}
 
 	// Skip the current typing animation
 	skip() {
-		if (!this.currentStep || this.currentStep.type !== 'dialogue') return;
-		if (this.typingTimeout) {
-			clearTimeout(this.typingTimeout);
-			this.typingTimeout = null;
+		if (this.isWaitingForInput) return;
+		const step = this.currentStep;
+		if (!step) return;
+		if (step.type === 'dialogue' || step.type === 'animation') {
+			if (this.typingTimeout) {
+				clearTimeout(this.typingTimeout);
+				this.typingTimeout = null;
+			}
+			this.typedText = step.type === 'dialogue' ? step.text : step.frames[step.frames.length - 1].text;
+			this.isTyping = false;
+			const wait = (step.type === 'dialogue' ? step.delay ?? 0 : 0) * 1000;
+			if (step.type === 'dialogue') {
+				this.typingTimeout = setTimeout(() => {
+					this.goToStep(step.nextStepId);
+				}, wait);
+			} else {
+				this.goToStep(step.nextStepId);
+			}
 		}
-		const step = this.currentStep as DialogueStep;
-		this.typedText = step.text;
-		this.isTyping = false;
-		// Wait for the configured delay, then continue
-		this.typingTimeout = window.setTimeout(() => {
-			this.goToStep(step.nextStepId);
-		}, (step.delay ?? 0.75) * 1000);
 	}
 
 	// Advance past a waiting state (e.g., after a pause or user click when not typing)
 	advance() {
+		if (this.isWaitingForInput) return; // Choices and text input handle their own flow
 		if (this.isTyping) {
 			this.skip();
 			return;
 		}
-		if (this.isWaitingForInput) return; // Don't advance if waiting for input
-
-		// If it's a dialogue step and we're already past typing
-		if (this.currentStep?.type === 'dialogue') {
-			const step = this.currentStep as DialogueStep;
+		const step = this.currentStep;
+		if (step?.type === 'dialogue') {
 			this.goToStep(step.nextStepId);
 		}
 	}
 
 	// Handle a choice selection
-	selectChoice(targetId: string) {
+	selectChoice(targetId: string, isTimeout = false) {
+		if (this.choiceTimeoutHandle) {
+			clearTimeout(this.choiceTimeoutHandle);
+			this.choiceTimeoutHandle = null;
+		}
 		this.isWaitingForInput = false;
+		this.isWaitingForChoice = false;
+		this.choiceTimeoutHandle = null;
+		// Lightweight hook: caller can check targetId to react
+		void isTimeout;
 		this.goToStep(targetId);
 	}
 
@@ -136,8 +240,10 @@ export class StoryEngine {
 	submitInput(input: string) {
 		if (this.currentStep?.type !== 'input') return;
 		const step = this.currentStep as InputStep;
+		this.inputValues[step.id] = input;
 		this.isWaitingForInput = false;
+		this.isWaitingForTextInput = false;
+		this.promptText = '';
 		this.goToStep(step.nextStepId);
-		// TODO: store input value somewhere
 	}
 }

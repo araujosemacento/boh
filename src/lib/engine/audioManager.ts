@@ -45,7 +45,6 @@ export class AudioManager {
 			'p03voice_calm#6.wav',
 			'p03voice_calm#7.wav',
 			'p03voice_calm#8.wav',
-			'p03voice_calm#9.wav',
 		];
 
 		for (const file of typingFiles) {
