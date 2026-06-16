@@ -63,10 +63,10 @@
 </script>
 
 <div class="dropdown dropdown-top dropdown-end fixed bottom-4 right-4 z-50">
-	<div tabindex="0" role="button" class="btn btn-secondary m-1 p-2 rounded-full"><Palette /></div>
+	<div tabindex="0" role="button" class="btn btn-secondary m-1 p-2"><Palette /></div>
 	<ul
 		tabindex="-1"
-		class="dropdown-content bg-base-300 text-base-content rounded-box w-40 z-1 p-2 shadow-2xl"
+		class="dropdown-content bg-base-100 text-base-content border border-base-200 rounded-lg w-40 z-1 p-2 shadow-xl"
 	>
 		<li>
 			<button
