@@ -1,2 +1,13 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
+@plugin 'daisyui' {
+	themes: false;
+}
+@plugin '$lib/themes/catppuccinTheme.frappe.ts';
+@plugin '$lib/themes/catppuccinTheme.latte.ts';
+@plugin '$lib/themes/catppuccinTheme.macchiato.ts';
+@plugin '$lib/themes/catppuccinTheme.mocha.ts';
+
+a {
+	@apply text-primary underline;
+}
