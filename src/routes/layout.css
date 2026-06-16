@@ -8,6 +8,10 @@
 @plugin '$lib/themes/catppuccinTheme.macchiato.ts';
 @plugin '$lib/themes/catppuccinTheme.mocha.ts';
 
+html {
+	@apply transition-colors duration-500;
+}
+
 a {
 	@apply text-primary underline;
 }
