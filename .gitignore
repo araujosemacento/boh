@@ -8,9 +8,22 @@ node_modules
 /.svelte-kit
 /build
 
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
 # OS
 .DS_Store
 Thumbs.db
+
+# LLMs
+.claude/
+.claude/**
+.cursor/
+.windsurf/
 
 # Env
 .env
