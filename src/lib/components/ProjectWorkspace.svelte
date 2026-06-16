@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { ArrowLeft, Save, Download, Upload, Play, Square, Plus, Trash2, Zap } from '@lucide/svelte';
 	import type { Project, DialogueNode } from '../types';
-	import { prepareWithSegments, layoutWithLines, measureNaturalWidth } from '@chenglou/pretext';
+	import DialoguePlayer from './DialoguePlayer.svelte';
 
 	let { project = $bindable(), onBack }: { project: Project; onBack: () => void } = $props();
 
@@ -29,66 +29,8 @@
 	let resizeStartWidth = 0;
 
 	// Player de Terminal
-	let isPlaying = $state(false);
-	let outputLines = $state<string[]>([]);
-	let currentExpression = $state<DialogueNode['expression']>('idle');
 	let activePlayNodeId = $state<string | null>(null);
-
-	// Helpers
-	const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-	const choice = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-
-	// Helper para quebrar linhas de diálogo de forma responsiva com pretext
-	const wrapDialogueText = (text: string, currentTerminalWidth: number): string[] => {
-		if (typeof window === 'undefined' || !text) return [text || ''];
-		
-		// O terminal tem padding lateral px-5 (20px cada lado = 40px)
-		// O painel do terminal fica dentro de uma área flex com p-4 (16px cada lado = 32px)
-		// A borda do mockup-window toma 2px (1px cada lado)
-		// Total de padding/bordas fora da área útil = 74px
-		const availWidth = Math.max(100, currentTerminalWidth - 74);
-		
-		const font = "13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
-		let charWidth = 8;
-		try {
-			const preparedChar = prepareWithSegments("A", font);
-			charWidth = measureNaturalWidth(preparedChar) || 8;
-		} catch (e) {
-			// Fallback silencioso
-		}
-		
-		// O prefixo '[ ▀ ° ▀]  ──┤ ' tem 13 caracteres
-		// O sufixo ' │' tem 2 caracteres
-		const prefixChars = 13;
-		const suffixChars = 2;
-		
-		const textMaxWidth = Math.max(50, availWidth - (prefixChars + suffixChars) * charWidth);
-		
-		try {
-			const preparedText = prepareWithSegments(text, font);
-			const layoutResult = layoutWithLines(preparedText, textMaxWidth, 16);
-			return layoutResult.lines.map(line => line.text);
-		} catch (e) {
-			console.error("Erro no wrapping do pretext:", e);
-			return [text];
-		}
-	};
-
-	// Expressões fiéis ao Boh.py original
-	const bohExpressions: Record<string, string[]> = {
-		idle: ['[ ▀ ¸ ▀]', '[ ▀ ° ▀]', '[ ▀ ■ ▀]', '[ ▀ ─ ▀]', '[ ▀ ~ ▀]', '[ ▀ ▄ ▀]', '[ ▀ ¬ ▀]', '[ ▀ · ▀]', '[ ▀ _ ▀]'],
-		pokerface: ['[ ▀ ‗ ▀]', '[ ▀ ¯ ▀]', '[ ▀ ¡ ▀]'],
-		thinking: ['[ ─ ´ ─]', '[ ─ » ─]'],
-		'open mouth': ['[ ▀ ß ▀]', '[ ▀ █ ▀]'],
-		annoyed: ['[ ▀ ı ▀]', '[ ▀ ^ ▀]'],
-		'looking down': ['[ ▄ . ▄]', '[ ▄ _ ▄]', '[ ▄ ₒ ▄]', '[ ▄ ‗ ▄]']
-	};
-
-	// Estado visual do terminal inline (rosto + balão)
-	let currentFace = $state('[ ▀ ° ▀]');
-	let currentBubbleText = $state('');
-	let terminalHistory = $state<Array<{ type: 'dialogue' | 'system' | 'error'; face?: string; text: string }>>([]);
-	let charIndex = $state(0);
+	let selectedNodeId = $state<string | null>(null);
 
 	// ── Derived: quais nós possuem conexão de entrada ──
 	const connectedInputIds = $derived(
@@ -190,6 +132,13 @@
 		e.stopPropagation();
 	};
 
+	const handleConnectionKeyDown = (e: KeyboardEvent, fromId: string) => {
+		if (e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			removeConnection(fromId);
+		}
+	};
+
 	// ── Início de Conexão (porta de saída) ──
 	const handleOutputPortMouseDown = (e: MouseEvent, id: string) => {
 		e.stopPropagation();
@@ -239,99 +188,15 @@
 		nodes[fromId].nextId = undefined;
 	};
 
-	// ── Engine do Player ──
-	const playTypingSound = () => {
-		try {
-			const ctx = new AudioContext();
-			const osc = ctx.createOscillator();
-			const gain = ctx.createGain();
-			osc.connect(gain);
-			gain.connect(ctx.destination);
-			osc.type = 'sine';
-			osc.frequency.setValueAtTime(choice([180, 210, 240, 270]), ctx.currentTime);
-			gain.gain.setValueAtTime(0.012, ctx.currentTime);
-			gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.04);
-			osc.start();
-			osc.stop(ctx.currentTime + 0.04);
-			setTimeout(() => ctx.close(), 100);
-		} catch (_) {}
-	};
-
-	const startPlaying = async () => {
-		if (isPlaying) return;
-		isPlaying = true;
-		terminalHistory = [{ type: 'system', text: '[Iniciando emulador do Boh...]' }];
-		currentBubbleText = '';
-		currentFace = choice(bohExpressions.idle);
-		currentExpression = 'idle';
-
-		const startNode = nodes['start'];
-		if (!startNode?.nextId) {
-			terminalHistory = [...terminalHistory, { type: 'error', text: 'Erro: Conecte o nó inicial a uma fala do Boh!' }];
-			isPlaying = false;
-			return;
-		}
-
-		let currentNodeId: string | undefined = startNode.nextId;
-		await sleep(600);
-
-		while (currentNodeId && isPlaying) {
-			activePlayNodeId = currentNodeId;
-			const node = nodes[currentNodeId];
-			if (!node) break;
-
-			currentExpression = node.expression;
-			const exprList = bohExpressions[node.expression] ?? bohExpressions.idle;
-			currentBubbleText = '';
-			charIndex = 0;
-
-			for (let i = 0; i < node.text.length; i++) {
-				if (!isPlaying) break;
-				charIndex = i;
-				// Cicla pelas expressões enquanto digita (como no legado)
-				currentFace = exprList[Math.floor(i / Math.max(1, Math.floor(exprList.length / 2))) % exprList.length];
-				currentBubbleText += node.text[i];
-
-				// Som apenas em caracteres alfanuméricos
-				if (node.text[i].match(/[a-zA-Z0-9]/)) {
-					playTypingSound();
-				}
-				await sleep(35);
-			}
-
-			if (isPlaying) {
-				// Salva a linha finalizada no histórico
-				terminalHistory = [...terminalHistory, { type: 'dialogue', face: currentFace, text: currentBubbleText }];
-				currentBubbleText = '';
-				currentExpression = 'idle';
-				currentFace = choice(bohExpressions.idle);
-				await sleep(1200);
-			}
-			currentNodeId = node.nextId;
-		}
-
-		activePlayNodeId = null;
-		isPlaying = false;
-		currentExpression = 'idle';
-		currentFace = choice(bohExpressions.idle);
-		terminalHistory = [...terminalHistory, { type: 'system', text: '[Execução finalizada.]' }];
-	};
-
-	const stopPlaying = () => {
-		isPlaying = false;
-		activePlayNodeId = null;
-		currentExpression = 'idle';
-	};
-
 	// ── Persistência ──
 	const saveProject = () => {
 		project.nodes = { ...nodes };
-		const savedProjects = JSON.parse(localStorage.getItem('saved-projects') || '[]');
+		const savedProjects = JSON.parse(localStorage.getItem('saved-projects-v2') || '[]');
 		const idx = savedProjects.findIndex((p: any) => p.id === project.id);
 		const updated = { ...project, nodes: { ...nodes } };
 		if (idx >= 0) savedProjects[idx] = updated;
 		else savedProjects.push(updated);
-		localStorage.setItem('saved-projects', JSON.stringify(savedProjects));
+		localStorage.setItem('saved-projects-v2', JSON.stringify(savedProjects));
 		alert('Projeto salvo localmente com sucesso!');
 	};
 
@@ -423,7 +288,7 @@
 
 		<!-- ─── Coluna Central: Canvas Infinito ─── -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<main
+		<div
 			bind:this={canvasElement}
 			onmousedown={handleCanvasMouseDown}
 			class="flex-1 relative overflow-hidden bg-base-300 canvas-grid"
@@ -443,7 +308,14 @@
 							{@const dx = Math.abs(inPort.x - outPort.x)}
 							{@const offset = Math.max(60, dx * 0.45)}
 
-							<g class="pointer-events-auto group cursor-pointer" onclick={() => removeConnection(node.id)}>
+							<g
+								class="pointer-events-auto group cursor-pointer"
+								tabindex="0"
+								role="button"
+								aria-label="Remover conexão"
+								onclick={() => removeConnection(node.id)}
+								onkeydown={(e) => handleConnectionKeyDown(e, node.id)}
+							>
 								<!-- Hitbox invisível para facilitar clique -->
 								<path
 									d={`M ${outPort.x} ${outPort.y} C ${outPort.x + offset} ${outPort.y}, ${inPort.x - offset} ${inPort.y}, ${inPort.x} ${inPort.y}`}
@@ -481,8 +353,8 @@
 				{#each Object.values(nodes) as node (node.id)}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
-						onmousedown={handleNodeMouseDown}
-						class="absolute select-none flex flex-col group/node {activePlayNodeId === node.id ? 'ring-2 ring-primary/30' : ''}"
+						onmousedown={(e) => { handleNodeMouseDown(e); selectedNodeId = node.id; }}
+						class="absolute select-none flex flex-col group/node transition-shadow {activePlayNodeId === node.id ? 'ring-2 ring-success/50' : ''} {selectedNodeId === node.id ? 'ring-2 ring-primary' : ''}"
 						class:w-32={node.type === 'start'}
 						class:w-72={node.type === 'boh'}
 						style="left: {node.x}px; top: {node.y}px;"
@@ -574,7 +446,7 @@
 					</div>
 				{/each}
 			</div>
-		</main>
+		</div>
 
 		<!-- Handle de Resize: Canvas ↔ Terminal -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -585,103 +457,12 @@
 
 		<!-- ─── Coluna Direita: Player de Terminal macOS ─── -->
 		<aside class="bg-base-100 border-l border-base-200 flex flex-col z-10 shrink-0" style="width: {terminalWidth}px">
-			<!-- Painel de Título -->
-			<div class="p-4 border-b border-base-200 flex items-center justify-between shrink-0">
-				<div>
-					<h3 class="text-sm font-bold tracking-wider text-base-content/60 uppercase">Simulação</h3>
-					<p class="text-xs text-base-content/50 mt-1">Reproduza e teste o diálogo</p>
-				</div>
-				<div class="flex items-center gap-1.5">
-					{#if isPlaying}
-						<button onclick={stopPlaying} class="btn btn-sm btn-error gap-1 px-3.5 font-bold shadow-lg shadow-error/10">
-							<Square class="size-4 fill-current" /> Parar
-						</button>
-					{:else}
-						<button onclick={startPlaying} class="btn btn-sm btn-success gap-1 px-3.5 text-base-100 font-bold shadow-lg shadow-success/15">
-							<Play class="size-4 fill-current" /> Play
-						</button>
-					{/if}
-				</div>
-			</div>
-
-			<!-- Terminal macOS -->
-			<div class="flex-1 p-4 flex flex-col min-h-0 bg-base-200/30">
-				<div class="flex-1 bg-[#0c0f16] text-[#e2e8f0] rounded-lg border border-[#1e2230] flex flex-col min-h-0 shadow-xl overflow-hidden">
-
-					<!-- macOS Title Bar -->
-					<div class="bg-[#161925] px-4 py-3 flex items-center gap-2 relative border-b border-[#0c0f16] shrink-0">
-						<div class="flex items-center gap-1.5 z-10">
-							<div class="w-3 h-3 rounded-full bg-error opacity-80"></div>
-							<div class="w-3 h-3 rounded-full bg-warning opacity-80"></div>
-							<div class="w-3 h-3 rounded-full bg-success opacity-80"></div>
-						</div>
-						<div class="w-full text-center text-[10px] tracking-wide font-mono text-[#8a91a5] uppercase font-bold absolute left-0 pr-4">
-							Boh.py Terminal
-						</div>
-					</div>
-
-					<!-- Terminal Body -->
-					<div class="px-5 py-4 flex-1 font-mono text-[13px] flex flex-col gap-0 overflow-y-auto min-h-0 select-text">
-
-						<!-- Histórico de diálogos finalizados -->
-						{#each terminalHistory as entry}
-							{#if entry.type === 'system'}
-								<div class="text-[#38bdf8] text-[11px] font-semibold py-1">{entry.text}</div>
-							{:else if entry.type === 'error'}
-								<div class="text-[#f87171] font-bold py-1">{entry.text}</div>
-							{:else}
-								{@const wrappedLines = wrapDialogueText(entry.text, terminalWidth)}
-								{#each wrappedLines as line, i}
-									<div class="flex items-baseline gap-0 py-0.5 text-[#f8fafc] whitespace-pre">
-										{#if i === 0}
-											<span class="text-[#4ade80] font-semibold shrink-0">{entry.face}{"  ──┤"}</span>
-											<span class="text-[#f8fafc] ml-1">{line}</span>
-											{#if wrappedLines.length === 1}
-												<span class="text-[#4ade80] font-semibold">{" │"}</span>
-											{/if}
-										{:else}
-											<span class="text-[#4ade80] font-semibold shrink-0">{"            │"}</span>
-											<span class="text-[#f8fafc] ml-1">{line}</span>
-											{#if i === wrappedLines.length - 1}
-												<span class="text-[#4ade80] font-semibold">{" │"}</span>
-											{/if}
-										{/if}
-									</div>
-								{/each}
-							{/if}
-						{/each}
-
-						<!-- Linha ativa sendo digitada agora -->
-						{#if isPlaying && currentBubbleText}
-							{@const activeLines = wrapDialogueText(currentBubbleText, terminalWidth)}
-							{#each activeLines as line, i}
-								<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
-									{#if i === 0}
-										<span class="text-[#4ade80] font-semibold shrink-0">{currentFace}{"  ──┤"}</span>
-										<span class="text-[#f8fafc] ml-1">{line}</span>
-										{#if activeLines.length === 1}
-											<span class="text-[#4ade80] font-semibold blink-cursor">{" │"}</span>
-										{/if}
-									{:else}
-										<span class="text-[#4ade80] font-semibold shrink-0">{"            │"}</span>
-										<span class="text-[#f8fafc] ml-1">{line}</span>
-										{#if i === activeLines.length - 1}
-											<span class="text-[#4ade80] font-semibold blink-cursor">{" │"}</span>
-										{/if}
-									{/if}
-								</div>
-							{/each}
-						{:else if !isPlaying && terminalHistory.length === 0}
-							<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
-								<span class="text-[#4ade80]/50 shrink-0">{currentFace}{"  ──┤"}</span>
-								<span class="ml-1 italic text-slate-400">Aperte Play para iniciar...</span>
-								<span class="text-[#4ade80]/50">{" │"}</span>
-							</div>
-						{/if}
-
-					</div>
-				</div>
-			</div>
+			<DialoguePlayer
+				{nodes}
+				bind:terminalWidth
+				bind:activePlayNodeId
+				selectedNodeId={selectedNodeId}
+			/>
 		</aside>
 	</div>
 </div>
@@ -701,11 +482,4 @@
 			linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 	}
 
-	/* Cursor piscante da barra do balão */
-	.blink-cursor {
-		animation: blink 0.8s step-end infinite;
-	}
-	@keyframes blink {
-		50% { opacity: 0; }
-	}
 </style>

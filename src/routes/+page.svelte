@@ -3,57 +3,89 @@
 	import Settings from '$lib/components/Settings.svelte';
 	import ProjectCard from '$lib/components/ProjectCard.svelte';
 	import ProjectWorkspace from '$lib/components/ProjectWorkspace.svelte';
-	import type { Project } from '$lib/types';
+	import type { Project, DialogueNode } from '$lib/types';
+
+	// Geração procedural de demonstrações
+	function createDemoProject(
+		id: string,
+		name: string,
+		description: string,
+		tag: string,
+		sentences: string[]
+	): Project {
+		const nodes: Record<string, DialogueNode> = {
+			start: {
+				id: 'start',
+				type: 'start',
+				x: 80,
+				y: 180,
+				expression: 'idle',
+				text: '',
+				nextId: 'node-1'
+			}
+		};
+
+		sentences.forEach((text, index) => {
+			const nodeId = `node-${index + 1}`;
+			const nextNodeId = index < sentences.length - 1 ? `node-${index + 2}` : undefined;
+			const expressions: Array<DialogueNode['expression']> = [
+				'idle',
+				'thinking',
+				'open mouth',
+				'pokerface',
+				'annoyed',
+				'looking down'
+			];
+			const expression = expressions[index % expressions.length];
+
+			nodes[nodeId] = {
+				id: nodeId,
+				type: 'boh',
+				x: 300 + index * 320,
+				y: 120 + (index % 2 === 0 ? 60 : -60),
+				expression,
+				text,
+				nextId: nextNodeId
+			};
+		});
+
+		return { id, name, description, tag, nodes };
+	}
+
+	function getProceduralDemos(): Project[] {
+		return [
+			createDemoProject(
+				'demo-intro',
+				'Boh: Introdução',
+				'Demonstração básica das capacidades de diálogo, expressões e efeito sonoro de digitação do emulador Boh.',
+				'Demonstração',
+				[
+					'Olá! Eu sou o Boh, seu companheiro de diálogos.',
+					'Este é o emulador de terminal rodando diretamente no seu navegador.',
+					'Você pode arrastar nós no canvas para me fazer dizer o que quiser.'
+				]
+			),
+			createDemoProject(
+				'demo-features',
+				'Boh: Recursos',
+				'Demonstração avançada mostrando diferentes expressões faciais e o alinhamento da caixa de diálogo.',
+				'Recursos',
+				[
+					'Viu só? Eu posso mudar de expressão enquanto digito!',
+					'Minha fala agora é formatada automaticamente usando pretext.',
+					'E a caixa de diálogo delimita o texto perfeitamente na lateral!'
+				]
+			)
+		];
+	}
 
 	// 1. Estado de Projetos Carregado do LocalStorage ou Inicializado com Padrões
-	let projects = $state<Project[]>([
-		{
-			id: 'aurora',
-			name: 'Aurora',
-			description: 'Página institucional com visual claro e foco em conteúdo.',
-			tag: 'Web',
-			nodes: {
-				'start': { id: 'start', type: 'start', x: 80, y: 180, expression: 'idle', text: '', nextId: 'node-1' },
-				'node-1': { id: 'node-1', type: 'boh', x: 300, y: 100, expression: 'thinking', text: 'Bem-vindo ao projeto Aurora!', nextId: 'node-2' },
-				'node-2': { id: 'node-2', type: 'boh', x: 650, y: 150, expression: 'open mouth', text: 'Espero que este editor de diálogos seja produtivo para você.' }
-			}
-		},
-		{
-			id: 'atlas',
-			name: 'Atlas API',
-			description: 'Estrutura de backend com documentação e rotas simples.',
-			tag: 'API',
-			nodes: {
-				'start': { id: 'start', type: 'start', x: 80, y: 180, expression: 'idle', text: '', nextId: 'node-1' },
-				'node-1': { id: 'node-1', type: 'boh', x: 300, y: 100, expression: 'pokerface', text: 'Iniciando o servidor Atlas...' }
-			}
-		},
-		{
-			id: 'mercury',
-			name: 'Mercury Mobile',
-			description: 'Experiência pensada para telas pequenas e navegação direta.',
-			tag: 'Mobile',
-			nodes: {
-				'start': { id: 'start', type: 'start', x: 80, y: 180, expression: 'idle', text: '', nextId: 'node-1' },
-				'node-1': { id: 'node-1', type: 'boh', x: 300, y: 100, expression: 'looking down', text: 'Mercury Mobile está pronto para testes de responsividade.' }
-			}
-		},
-		{
-			id: 'northstar',
-			name: 'North Star',
-			description: 'Base visual para componentes compartilhados e páginas futuras.',
-			tag: 'UI kit',
-			nodes: {
-				'start': { id: 'start', type: 'start', x: 80, y: 180, expression: 'idle', text: '', nextId: 'node-1' },
-				'node-1': { id: 'node-1', type: 'boh', x: 300, y: 100, expression: 'idle', text: 'Biblioteca de componentes North Star iniciada.' }
-			}
-		}
-	]);
+	let projects = $state<Project[]>(getProceduralDemos());
 
 	// Carrega dados persistidos ao montar o componente no navegador
 	$effect(() => {
 		if (typeof window !== 'undefined') {
-			const saved = localStorage.getItem('saved-projects');
+			const saved = localStorage.getItem('saved-projects-v2');
 			if (saved) {
 				try {
 					projects = JSON.parse(saved);
@@ -61,7 +93,7 @@
 					// Fallback silencioso
 				}
 			} else {
-				localStorage.setItem('saved-projects', JSON.stringify(projects));
+				localStorage.setItem('saved-projects-v2', JSON.stringify(projects));
 			}
 		}
 	});
@@ -92,18 +124,18 @@
 			description: 'Crie e configure os nós do diálogo deste projeto.',
 			tag: 'Rascunho',
 			nodes: {
-				'start': { id: 'start', type: 'start', x: 100, y: 200, expression: 'idle', text: '' }
+				start: { id: 'start', type: 'start', x: 100, y: 200, expression: 'idle', text: '' }
 			}
 		};
 
 		projects = [...projects, newProject];
-		localStorage.setItem('saved-projects', JSON.stringify(projects));
+		localStorage.setItem('saved-projects-v2', JSON.stringify(projects));
 		activeProject = newProject; // Abre o editor diretamente
 	};
 
 	// Recarrega lista ao fechar o editor
 	const handleBack = () => {
-		const saved = localStorage.getItem('saved-projects');
+		const saved = localStorage.getItem('saved-projects-v2');
 		if (saved) {
 			try {
 				projects = JSON.parse(saved);
@@ -129,7 +161,9 @@
 {:else}
 	<!-- Dashboard de Projetos -->
 	<div class="min-h-screen bg-base-300 text-base-content flex flex-col">
-		<section class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 flex-1">
+		<section
+			class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 flex-1"
+		>
 			<header
 				class="flex flex-col gap-5 rounded-lg border border-base-200 bg-base-100 p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8"
 			>
@@ -175,11 +209,13 @@
 				{#if filteredProjects.length > 0}
 					<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 						{#each filteredProjects as project}
-							<!-- svelte-ignore a11y_click_events_have_key_events -->
-							<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-							<div onclick={() => activeProject = project} class="cursor-pointer hover:scale-[1.01] transition-transform duration-200">
+							<button
+								type="button"
+								onclick={() => (activeProject = project)}
+								class="cursor-pointer hover:scale-[1.01] transition-transform duration-200 bg-transparent border-0 p-0"
+							>
 								<ProjectCard {project} />
-							</div>
+							</button>
 						{/each}
 					</div>
 				{:else}
