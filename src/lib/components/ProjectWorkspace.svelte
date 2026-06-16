@@ -1,5 +1,15 @@
 <script lang="ts">
-	import { ArrowLeft, Save, Download, Upload, Play, Square, Plus, Trash2, Zap } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		Save,
+		Download,
+		Upload,
+		Play,
+		Square,
+		Plus,
+		Trash2,
+		Zap
+	} from '@lucide/svelte';
 	import type { Project, DialogueNode } from '../types';
 	import DialoguePlayer from './DialoguePlayer.svelte';
 
@@ -34,10 +44,18 @@
 
 	// ── Derived: quais nós possuem conexão de entrada ──
 	const connectedInputIds = $derived(
-		new Set(Object.values(nodes).map((n) => n.nextId).filter(Boolean))
+		new Set(
+			Object.values(nodes)
+				.map((n) => n.nextId)
+				.filter(Boolean)
+		)
 	);
 	const connectedOutputIds = $derived(
-		new Set(Object.values(nodes).filter((n) => n.nextId).map((n) => n.id))
+		new Set(
+			Object.values(nodes)
+				.filter((n) => n.nextId)
+				.map((n) => n.id)
+		)
 	);
 
 	// ── Coordenadas das Portas (relativas ao nó) ──
@@ -201,7 +219,9 @@
 	};
 
 	const exportJson = () => {
-		const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({ ...project, nodes }, null, 2));
+		const dataStr =
+			'data:text/json;charset=utf-8,' +
+			encodeURIComponent(JSON.stringify({ ...project, nodes }, null, 2));
 		const a = document.createElement('a');
 		a.href = dataStr;
 		a.download = `${project.name.toLowerCase()}_dialogue.json`;
@@ -221,16 +241,18 @@
 			reader.onload = (ev) => {
 				try {
 					const parsed = JSON.parse(ev.target?.result as string);
-					if (parsed?.nodes) { nodes = parsed.nodes; alert('Grafo importado!'); }
-					else alert('JSON inválido.');
-				} catch { alert('Erro ao processar JSON.'); }
+					if (parsed?.nodes) {
+						nodes = parsed.nodes;
+						alert('Grafo importado!');
+					} else alert('JSON inválido.');
+				} catch {
+					alert('Erro ao processar JSON.');
+				}
 			};
 			reader.readAsText(file);
 		};
 		input.click();
 	};
-
-
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -240,7 +262,9 @@
 	onmouseup={handleGlobalMouseUp}
 >
 	<!-- ═══ Barra Superior ═══ -->
-	<header class="h-14 bg-base-100 border-b border-base-200 px-4 flex items-center justify-between z-10 shrink-0 shadow-sm">
+	<header
+		class="h-14 bg-base-100 border-b border-base-200 px-4 flex items-center justify-between z-10 shrink-0 shadow-sm"
+	>
 		<div class="flex items-center gap-3">
 			<button onclick={onBack} class="btn btn-ghost btn-sm gap-2">
 				<ArrowLeft class="size-4" />
@@ -259,7 +283,10 @@
 			<button onclick={exportJson} class="btn btn-sm btn-ghost gap-1.5 font-semibold">
 				<Download class="size-4" /> Exportar JSON
 			</button>
-			<button onclick={saveProject} class="btn btn-sm btn-primary gap-1.5 font-bold shadow-lg shadow-primary/10">
+			<button
+				onclick={saveProject}
+				class="btn btn-sm btn-primary gap-1.5 font-bold shadow-lg shadow-primary/10"
+			>
 				<Save class="size-4" /> Salvar
 			</button>
 		</div>
@@ -267,15 +294,22 @@
 
 	<!-- ═══ Área de 3 Colunas Redimensionáveis ═══ -->
 	<div class="flex-1 flex overflow-hidden">
-
 		<!-- ─── Coluna Esquerda: Paleta ─── -->
-		<aside class="bg-base-100 border-r border-base-200 p-4 flex flex-col gap-4 shrink-0 overflow-y-auto" style="width: {paletteWidth}px">
+		<aside
+			class="bg-base-100 border-r border-base-200 p-4 flex flex-col gap-4 shrink-0 overflow-y-auto"
+			style="width: {paletteWidth}px"
+		>
 			<div>
-				<h3 class="text-sm font-bold tracking-wider text-base-content/60 uppercase">Paleta de Nós</h3>
+				<h3 class="text-sm font-bold tracking-wider text-base-content/60 uppercase">
+					Paleta de Nós
+				</h3>
 				<p class="text-xs text-base-content/50 mt-1">Clique para adicionar nós no canvas</p>
 			</div>
-			<button onclick={addBohNode} class="btn btn-outline btn-primary btn-block gap-2 text-sm justify-start font-semibold">
-				<Plus class="size-4" /> + Fala do Boh
+			<button
+				onclick={addBohNode}
+				class="btn btn-outline btn-primary btn-block gap-2 text-sm justify-start font-semibold"
+			>
+				<Plus class="size-4" /> Fala do Boh
 			</button>
 		</aside>
 
@@ -296,8 +330,10 @@
 			class:cursor-grabbing={isPanning}
 			class:cursor-crosshair={!!connectingFromId}
 		>
-			<div class="absolute inset-0 origin-top-left" style="transform: translate3d({pan.x}px, {pan.y}px, 0)">
-
+			<div
+				class="absolute inset-0 origin-top-left"
+				style="transform: translate3d({pan.x}px, {pan.y}px, 0)"
+			>
 				<!-- SVG Overlay: Conexões (Splines) -->
 				<svg class="absolute inset-0 pointer-events-none w-[8000px] h-[8000px]">
 					<!-- Conexões Existentes -->
@@ -319,7 +355,9 @@
 								<!-- Hitbox invisível para facilitar clique -->
 								<path
 									d={`M ${outPort.x} ${outPort.y} C ${outPort.x + offset} ${outPort.y}, ${inPort.x - offset} ${inPort.y}, ${inPort.x} ${inPort.y}`}
-									fill="none" stroke="transparent" stroke-width="14"
+									fill="none"
+									stroke="transparent"
+									stroke-width="14"
 								/>
 								<!-- Spline Visível (SEM seta) -->
 								<path
@@ -353,8 +391,14 @@
 				{#each Object.values(nodes) as node (node.id)}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
-						onmousedown={(e) => { handleNodeMouseDown(e); selectedNodeId = node.id; }}
-						class="absolute select-none flex flex-col group/node transition-shadow {activePlayNodeId === node.id ? 'ring-2 ring-success/50' : ''} {selectedNodeId === node.id ? 'ring-2 ring-primary' : ''}"
+						onmousedown={(e) => {
+							handleNodeMouseDown(e);
+							selectedNodeId = node.id;
+						}}
+						class="absolute select-none flex flex-col group/node transition-shadow {activePlayNodeId ===
+						node.id
+							? 'ring-2 ring-success/50'
+							: ''} {selectedNodeId === node.id ? 'ring-2 ring-primary' : ''}"
 						class:w-32={node.type === 'start'}
 						class:w-72={node.type === 'boh'}
 						style="left: {node.x}px; top: {node.y}px;"
@@ -365,12 +409,18 @@
 								onmousedown={(e) => handleNodeHeaderMouseDown(e, node.id)}
 								class="flex items-center justify-between px-3 py-2 bg-base-100 border border-base-200 shadow-md rounded-md cursor-grab active:cursor-grabbing"
 							>
-								<span class="flex items-center gap-1.5 text-success font-bold text-sm"><Zap class="size-4" /> Start</span>
+								<span class="flex items-center gap-1.5 text-success font-bold text-sm"
+									><Zap class="size-4" /> Start</span
+								>
 
 								<!-- Porta de Saída (Start) -->
 								<button
 									onmousedown={(e) => handleOutputPortMouseDown(e, node.id)}
-									class="w-4 h-4 rounded-full border-2 border-success translate-x-5 hover:scale-125 transition-transform cursor-crosshair {connectedOutputIds.has(node.id) ? 'bg-success' : 'bg-base-100'}"
+									class="w-4 h-4 rounded-full border-2 border-success translate-x-5 hover:scale-125 transition-transform cursor-crosshair {connectedOutputIds.has(
+										node.id
+									)
+										? 'bg-success'
+										: 'bg-base-100'}"
 									title="Conectar saída"
 									aria-label="Conectar saída do nó Start"
 								></button>
@@ -385,12 +435,18 @@
 								>
 									<!-- Porta de Entrada -->
 									<button
-										class="w-4 h-4 rounded-full border-2 border-primary -translate-x-5 {connectedInputIds.has(node.id) ? 'bg-primary' : 'bg-base-100'}"
+										class="w-4 h-4 rounded-full border-2 border-primary -translate-x-5 {connectedInputIds.has(
+											node.id
+										)
+											? 'bg-primary'
+											: 'bg-base-100'}"
 										title="Entrada"
 										aria-label="Porta de entrada"
 									></button>
 
-									<span class="font-bold text-xs text-base-content/70 uppercase tracking-wide">Diálogo do Boh</span>
+									<span class="font-bold text-xs text-base-content/70 uppercase tracking-wide"
+										>Diálogo do Boh</span
+									>
 
 									<div class="flex items-center gap-1.5">
 										<button
@@ -403,7 +459,11 @@
 										<!-- Porta de Saída -->
 										<button
 											onmousedown={(e) => handleOutputPortMouseDown(e, node.id)}
-											class="w-4 h-4 rounded-full border-2 border-primary translate-x-5 hover:scale-125 transition-transform cursor-crosshair {connectedOutputIds.has(node.id) ? 'bg-primary' : 'bg-base-100'}"
+											class="w-4 h-4 rounded-full border-2 border-primary translate-x-5 hover:scale-125 transition-transform cursor-crosshair {connectedOutputIds.has(
+												node.id
+											)
+												? 'bg-primary'
+												: 'bg-base-100'}"
 											title="Conectar saída"
 											aria-label="Conectar saída do diálogo"
 										></button>
@@ -414,7 +474,9 @@
 								<div class="p-3 flex flex-col gap-3">
 									<div class="form-control">
 										<label class="label py-1" for="expr-{node.id}">
-											<span class="label-text text-[11px] font-bold text-base-content/60">Expressão do Boh</span>
+											<span class="label-text text-[11px] font-bold text-base-content/60"
+												>Expressão do Boh</span
+											>
 										</label>
 										<select
 											id="expr-{node.id}"
@@ -424,21 +486,22 @@
 											<option value="idle">Idle (Padrão)</option>
 											<option value="pokerface">Pokerface</option>
 											<option value="thinking">Pensando</option>
-											<option value="open mouth">Falando</option>
+											<option value="open mouth">Gritando</option>
 											<option value="annoyed">Irritado</option>
 											<option value="looking down">Desanimado</option>
 										</select>
 									</div>
 									<div class="form-control">
 										<label class="label py-1" for="text-{node.id}">
-											<span class="label-text text-[11px] font-bold text-base-content/60">Texto da Fala</span>
+											<span class="label-text text-[11px] font-bold text-base-content/60"
+												>Texto da Fala</span
+											>
 										</label>
 										<textarea
 											id="text-{node.id}"
 											bind:value={node.text}
 											class="textarea textarea-bordered text-xs leading-relaxed font-medium bg-base-200 rounded-md h-20 resize-none placeholder:text-base-content/45"
-											placeholder="Escreva a fala do Boh aqui..."
-										></textarea>
+											placeholder="Escreva a fala do Boh aqui..."></textarea>
 									</div>
 								</div>
 							</div>
@@ -456,13 +519,11 @@
 		></div>
 
 		<!-- ─── Coluna Direita: Player de Terminal macOS ─── -->
-		<aside class="bg-base-100 border-l border-base-200 flex flex-col z-10 shrink-0" style="width: {terminalWidth}px">
-			<DialoguePlayer
-				{nodes}
-				bind:terminalWidth
-				bind:activePlayNodeId
-				selectedNodeId={selectedNodeId}
-			/>
+		<aside
+			class="bg-base-100 border-l border-base-200 flex flex-col z-10 shrink-0"
+			style="width: {terminalWidth}px"
+		>
+			<DialoguePlayer {nodes} bind:terminalWidth bind:activePlayNodeId {selectedNodeId} />
 		</aside>
 	</div>
 </div>
@@ -474,12 +535,11 @@
 			linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
 			linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
 	}
-	:global([data-theme="mocha"]) .canvas-grid,
-	:global([data-theme="macchiato"]) .canvas-grid,
-	:global([data-theme="frappe"]) .canvas-grid {
+	:global([data-theme='mocha']) .canvas-grid,
+	:global([data-theme='macchiato']) .canvas-grid,
+	:global([data-theme='frappe']) .canvas-grid {
 		background-image:
 			linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
 			linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
 	}
-
 </style>
