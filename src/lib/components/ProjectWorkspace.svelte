@@ -4,49 +4,102 @@
 
 	let { project = $bindable(), onBack }: { project: Project; onBack: () => void } = $props();
 
-	// 1. Estados Reativos Principais (Svelte 5 Runes)
+	// ── Estados Reativos Principais ──
 	let nodes = $state<Record<string, DialogueNode>>({ ...project.nodes });
 	let pan = $state({ x: 0, y: 0 });
 	let isPanning = $state(false);
 	let panStart = { x: 0, y: 0 };
 
-	// Estados de Arraste de Nó
+	// Arraste de Nó
 	let draggedNodeId = $state<string | null>(null);
 	let dragStartOffset = { x: 0, y: 0 };
 
-	// Estados de Criação de Conexão
+	// Criação de Conexão (drag de porta)
 	let connectingFromId = $state<string | null>(null);
 	let mouseX = $state(0);
 	let mouseY = $state(0);
 	let canvasElement = $state<HTMLDivElement | null>(null);
 
-	// Estados do Player de Terminal
+	// Redimensionamento de Colunas
+	let paletteWidth = $state(240);
+	let terminalWidth = $state(480);
+	let resizingColumn = $state<'palette' | 'terminal' | null>(null);
+	let resizeStartX = 0;
+	let resizeStartWidth = 0;
+
+	// Player de Terminal
 	let isPlaying = $state(false);
 	let outputLines = $state<string[]>([]);
-	let currentExpression = $state<'idle' | 'pokerface' | 'thinking' | 'open mouth' | 'annoyed' | 'looking down'>('idle');
+	let currentExpression = $state<DialogueNode['expression']>('idle');
 	let activePlayNodeId = $state<string | null>(null);
 
-	// Auxiliar de Timeout
-	const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+	// Helpers
+	const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 	const choice = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-	// 2. Lógica do Pan (Arraste de Fundo do Canvas)
-	const handleMouseDownBg = (e: MouseEvent) => {
-		// Panning ativa com botão esquerdo no fundo ou botão do meio
+	// Expressões fiéis ao Boh.py original
+	const bohExpressions: Record<string, string[]> = {
+		idle: ['[ ▀ ¸ ▀]', '[ ▀ ° ▀]', '[ ▀ ■ ▀]', '[ ▀ ─ ▀]', '[ ▀ ~ ▀]', '[ ▀ ▄ ▀]', '[ ▀ ¬ ▀]', '[ ▀ · ▀]', '[ ▀ _ ▀]'],
+		pokerface: ['[ ▀ ‗ ▀]', '[ ▀ ¯ ▀]', '[ ▀ ¡ ▀]'],
+		thinking: ['[ ─ ´ ─]', '[ ─ » ─]'],
+		'open mouth': ['[ ▀ ß ▀]', '[ ▀ █ ▀]'],
+		annoyed: ['[ ▀ ı ▀]', '[ ▀ ^ ▀]'],
+		'looking down': ['[ ▄ . ▄]', '[ ▄ _ ▄]', '[ ▄ ₒ ▄]', '[ ▄ ‗ ▄]']
+	};
+
+	// Estado visual do terminal inline (rosto + balão)
+	let currentFace = $state('[ ▀ ° ▀]');
+	let currentBubbleText = $state('');
+	let terminalHistory = $state<Array<{ type: 'dialogue' | 'system' | 'error'; face?: string; text: string }>>([]);
+	let charIndex = $state(0);
+
+	// ── Derived: quais nós possuem conexão de entrada ──
+	const connectedInputIds = $derived(
+		new Set(Object.values(nodes).map((n) => n.nextId).filter(Boolean))
+	);
+	const connectedOutputIds = $derived(
+		new Set(Object.values(nodes).filter((n) => n.nextId).map((n) => n.id))
+	);
+
+	// ── Coordenadas das Portas (relativas ao nó) ──
+	const getOutputPortPos = (node: DialogueNode) => {
+		if (node.type === 'start') return { x: node.x + 128, y: node.y + 32 };
+		return { x: node.x + 288, y: node.y + 18 };
+	};
+	const getInputPortPos = (node: DialogueNode) => {
+		return { x: node.x, y: node.y + 18 };
+	};
+
+	// ── Pan do Canvas ──
+	const handleCanvasMouseDown = (e: MouseEvent) => {
 		if (e.button === 0 || e.button === 1) {
 			isPanning = true;
 			panStart = { x: e.clientX - pan.x, y: e.clientY - pan.y };
 		}
 	};
 
-	const handleMouseMoveBg = (e: MouseEvent) => {
+	const handleGlobalMouseMove = (e: MouseEvent) => {
+		// Resize de colunas
+		if (resizingColumn) {
+			const delta = e.clientX - resizeStartX;
+			if (resizingColumn === 'palette') {
+				paletteWidth = Math.max(180, Math.min(400, resizeStartWidth + delta));
+			} else {
+				terminalWidth = Math.max(320, Math.min(700, resizeStartWidth - delta));
+			}
+			return;
+		}
+
 		if (isPanning) {
 			pan = { x: e.clientX - panStart.x, y: e.clientY - panStart.y };
 		}
 
 		if (draggedNodeId) {
-			nodes[draggedNodeId].x = e.clientX - dragStartOffset.x;
-			nodes[draggedNodeId].y = e.clientY - dragStartOffset.y;
+			const node = nodes[draggedNodeId];
+			if (node) {
+				node.x = e.clientX - dragStartOffset.x;
+				node.y = e.clientY - dragStartOffset.y;
+			}
 		}
 
 		if (connectingFromId && canvasElement) {
@@ -56,17 +109,30 @@
 		}
 	};
 
-	const handleMouseUpBg = () => {
+	const handleGlobalMouseUp = (e: MouseEvent) => {
+		// Finaliza resize
+		if (resizingColumn) {
+			resizingColumn = null;
+			return;
+		}
+
 		isPanning = false;
 		draggedNodeId = null;
 
+		// Finaliza conexão
 		if (connectingFromId && canvasElement) {
-			// Verifica colisão com nó de entrada
-			const targetNode = Object.values(nodes).find(
-				(n) => n.type === 'boh' && Math.hypot(mouseX - n.x, mouseY - (n.y + 80)) < 30
-			);
+			const rect = canvasElement.getBoundingClientRect();
+			const mx = e.clientX - rect.left - pan.x;
+			const my = e.clientY - rect.top - pan.y;
 
-			if (targetNode && targetNode.id !== connectingFromId) {
+			// Procura nó cuja porta de entrada está próxima do mouse
+			const targetNode = Object.values(nodes).find((n) => {
+				if (n.type === 'start' || n.id === connectingFromId) return false;
+				const port = getInputPortPos(n);
+				return Math.hypot(mx - port.x, my - port.y) < 25;
+			});
+
+			if (targetNode) {
 				nodes[connectingFromId].nextId = targetNode.id;
 			}
 
@@ -74,18 +140,28 @@
 		}
 	};
 
-	// 3. Lógica de Drag de Nós
-	const handleMouseDownNode = (e: MouseEvent, id: string) => {
+	// ── Drag de Nós (apenas pelo header) ──
+	const handleNodeHeaderMouseDown = (e: MouseEvent, id: string) => {
 		e.stopPropagation();
+		e.preventDefault();
 		draggedNodeId = id;
 		dragStartOffset = { x: e.clientX - nodes[id].x, y: e.clientY - nodes[id].y };
 	};
 
-	// 4. Criação de Conexão (Click no Output Port)
-	const handleStartConnection = (e: MouseEvent, id: string) => {
+	// ── Bloqueia propagação em qualquer clique dentro do nó ──
+	const handleNodeMouseDown = (e: MouseEvent) => {
 		e.stopPropagation();
-		connectingFromId = id;
+	};
 
+	// ── Início de Conexão (porta de saída) ──
+	const handleOutputPortMouseDown = (e: MouseEvent, id: string) => {
+		e.stopPropagation();
+		e.preventDefault();
+		// Se já existe conexão, remove antes
+		if (nodes[id].nextId) {
+			nodes[id].nextId = undefined;
+		}
+		connectingFromId = id;
 		if (canvasElement) {
 			const rect = canvasElement.getBoundingClientRect();
 			mouseX = e.clientX - rect.left - pan.x;
@@ -93,71 +169,68 @@
 		}
 	};
 
-	// 5. Adicionar e Deletar Nós
+	// ── Redimensionamento de Colunas ──
+	const startResize = (e: MouseEvent, column: 'palette' | 'terminal') => {
+		e.preventDefault();
+		resizingColumn = column;
+		resizeStartX = e.clientX;
+		resizeStartWidth = column === 'palette' ? paletteWidth : terminalWidth;
+	};
+
+	// ── CRUD de Nós ──
 	const addBohNode = () => {
 		const id = `node-${Date.now()}`;
-		// Spawna o nó deslocado em relação ao pan atual para que apareça no centro visual
 		nodes[id] = {
 			id,
 			type: 'boh',
-			x: -pan.x + 150 + Math.random() * 50,
-			y: -pan.y + 150 + Math.random() * 50,
+			x: -pan.x + 200 + Math.random() * 60,
+			y: -pan.y + 150 + Math.random() * 60,
 			expression: 'idle',
 			text: 'Olá! Escreva o diálogo aqui.'
 		};
 	};
 
 	const deleteNode = (id: string) => {
-		if (id === 'start') return; // Start não pode ser apagado
-		
-		// Remove referências a este nó nas conexões
+		if (id === 'start') return;
 		Object.keys(nodes).forEach((key) => {
-			if (nodes[key].nextId === id) {
-				nodes[key].nextId = undefined;
-			}
+			if (nodes[key].nextId === id) nodes[key].nextId = undefined;
 		});
-
 		delete nodes[id];
 	};
 
-	// Remove conexão específica ao clicar na linha
 	const removeConnection = (fromId: string) => {
 		nodes[fromId].nextId = undefined;
 	};
 
-	// 6. Engine do Player de Diálogo
+	// ── Engine do Player ──
 	const playTypingSound = () => {
 		try {
-			const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-			const osc = audioCtx.createOscillator();
-			const gain = audioCtx.createGain();
+			const ctx = new AudioContext();
+			const osc = ctx.createOscillator();
+			const gain = ctx.createGain();
 			osc.connect(gain);
-			gain.connect(audioCtx.destination);
-
+			gain.connect(ctx.destination);
 			osc.type = 'sine';
-			osc.frequency.setValueAtTime(choice([180, 210, 240, 270]), audioCtx.currentTime);
-
-			gain.gain.setValueAtTime(0.012, audioCtx.currentTime);
-			gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.04);
-
+			osc.frequency.setValueAtTime(choice([180, 210, 240, 270]), ctx.currentTime);
+			gain.gain.setValueAtTime(0.012, ctx.currentTime);
+			gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.04);
 			osc.start();
-			osc.stop(audioCtx.currentTime + 0.04);
-
-			setTimeout(() => audioCtx.close(), 100);
-		} catch (e) {
-			// Fallback silenciável
-		}
+			osc.stop(ctx.currentTime + 0.04);
+			setTimeout(() => ctx.close(), 100);
+		} catch (_) {}
 	};
 
 	const startPlaying = async () => {
 		if (isPlaying) return;
 		isPlaying = true;
-		outputLines = ['[Iniciando emulador do Boh...]'];
+		terminalHistory = [{ type: 'system', text: '[Iniciando emulador do Boh...]' }];
+		currentBubbleText = '';
+		currentFace = choice(bohExpressions.idle);
 		currentExpression = 'idle';
 
 		const startNode = nodes['start'];
-		if (!startNode || !startNode.nextId) {
-			outputLines = [...outputLines, 'Erro: Conecte o nó inicial a uma fala do Boh!'];
+		if (!startNode?.nextId) {
+			terminalHistory = [...terminalHistory, { type: 'error', text: 'Erro: Conecte o nó inicial a uma fala do Boh!' }];
 			isPlaying = false;
 			return;
 		}
@@ -171,29 +244,40 @@
 			if (!node) break;
 
 			currentExpression = node.expression;
-			outputLines = [...outputLines, ''];
-			const lineIndex = outputLines.length - 1;
-			const textToType = node.text;
+			const exprList = bohExpressions[node.expression] ?? bohExpressions.idle;
+			currentBubbleText = '';
+			charIndex = 0;
 
-			for (let i = 0; i < textToType.length; i++) {
+			for (let i = 0; i < node.text.length; i++) {
 				if (!isPlaying) break;
-				outputLines[lineIndex] += textToType[i];
-				playTypingSound();
-				await sleep(40); // 40ms por caractere
+				charIndex = i;
+				// Cicla pelas expressões enquanto digita (como no legado)
+				currentFace = exprList[Math.floor(i / Math.max(1, Math.floor(exprList.length / 2))) % exprList.length];
+				currentBubbleText += node.text[i];
+
+				// Som apenas em caracteres alfanuméricos
+				if (node.text[i].match(/[a-zA-Z0-9]/)) {
+					playTypingSound();
+				}
+				await sleep(35);
 			}
 
 			if (isPlaying) {
+				// Salva a linha finalizada no histórico
+				terminalHistory = [...terminalHistory, { type: 'dialogue', face: currentFace, text: currentBubbleText }];
+				currentBubbleText = '';
 				currentExpression = 'idle';
-				await sleep(1200); // 1.2s de pausa entre as falas
+				currentFace = choice(bohExpressions.idle);
+				await sleep(1200);
 			}
-
 			currentNodeId = node.nextId;
 		}
 
 		activePlayNodeId = null;
 		isPlaying = false;
 		currentExpression = 'idle';
-		outputLines = [...outputLines, '', '[Execução finalizada.]'];
+		currentFace = choice(bohExpressions.idle);
+		terminalHistory = [...terminalHistory, { type: 'system', text: '[Execução finalizada.]' }];
 	};
 
 	const stopPlaying = () => {
@@ -202,38 +286,26 @@
 		currentExpression = 'idle';
 	};
 
-	// 7. Persistência e Exportação
+	// ── Persistência ──
 	const saveProject = () => {
 		project.nodes = { ...nodes };
 		const savedProjects = JSON.parse(localStorage.getItem('saved-projects') || '[]');
-		const index = savedProjects.findIndex((p: any) => p.id === project.id);
-		
-		const updatedProject = {
-			...project,
-			nodes: { ...nodes }
-		};
-
-		if (index >= 0) {
-			savedProjects[index] = updatedProject;
-		} else {
-			savedProjects.push(updatedProject);
-		}
-
+		const idx = savedProjects.findIndex((p: any) => p.id === project.id);
+		const updated = { ...project, nodes: { ...nodes } };
+		if (idx >= 0) savedProjects[idx] = updated;
+		else savedProjects.push(updated);
 		localStorage.setItem('saved-projects', JSON.stringify(savedProjects));
 		alert('Projeto salvo localmente com sucesso!');
 	};
 
 	const exportJson = () => {
-		const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({
-			...project,
-			nodes
-		}, null, 2));
-		const downloadAnchor = document.createElement('a');
-		downloadAnchor.setAttribute('href', dataStr);
-		downloadAnchor.setAttribute('download', `${project.name.toLowerCase()}_dialogue.json`);
-		document.body.appendChild(downloadAnchor);
-		downloadAnchor.click();
-		downloadAnchor.remove();
+		const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({ ...project, nodes }, null, 2));
+		const a = document.createElement('a');
+		a.href = dataStr;
+		a.download = `${project.name.toLowerCase()}_dialogue.json`;
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
 	};
 
 	const triggerImportJson = () => {
@@ -243,78 +315,29 @@
 		input.onchange = (e) => {
 			const file = (e.target as HTMLInputElement).files?.[0];
 			if (!file) return;
-
 			const reader = new FileReader();
-			reader.onload = (readerEvent) => {
+			reader.onload = (ev) => {
 				try {
-					const parsed = JSON.parse(readerEvent.target?.result as string);
-					if (parsed && parsed.nodes) {
-						nodes = parsed.nodes;
-						alert('Grafo de diálogo importado com sucesso!');
-					} else {
-						alert('Arquivo JSON inválido.');
-					}
-				} catch (err) {
-					alert('Erro ao processar o arquivo JSON.');
-				}
+					const parsed = JSON.parse(ev.target?.result as string);
+					if (parsed?.nodes) { nodes = parsed.nodes; alert('Grafo importado!'); }
+					else alert('JSON inválido.');
+				} catch { alert('Erro ao processar JSON.'); }
 			};
 			reader.readAsText(file);
 		};
 		input.click();
 	};
 
-	// 8. Renderizador de Avatar ASCII
-	const getBohAvatar = (expr: string) => {
-		switch (expr) {
-			case 'pokerface':
-				return `
- [ BOH: POKERFACE ]
-   +----------+
-   |   -  -   |
-   |   ____   |
-   +----------+`;
-			case 'thinking':
-				return `
- [ BOH: PENSANDO ]
-   +----------+
-   |   o  ?   |
-   |   ....   |
-   +----------+`;
-			case 'open mouth':
-				return `
- [ BOH: FALANDO ]
-   +----------+
-   |   O  O   |
-   |   |  |   |
-   +----------+`;
-			case 'annoyed':
-				return `
- [ BOH: IRRITADO ]
-   +----------+
-   |   >  <   |
-   |   \\__/   |
-   +----------+`;
-			case 'looking down':
-				return `
- [ BOH: DESANIMADO ]
-   +----------+
-   |   u  u   |
-   |   ____   |
-   +----------+`;
-			case 'idle':
-			default:
-				return `
- [ BOH: IDLE ]
-   +----------+
-   |   o  o   |
-   |   ____   |
-   +----------+`;
-		}
-	};
+
 </script>
 
-<div class="h-screen flex flex-col bg-base-300 select-none overflow-hidden text-base-content">
-	<!-- Barra Superior -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="h-screen flex flex-col bg-base-300 select-none overflow-hidden text-base-content"
+	onmousemove={handleGlobalMouseMove}
+	onmouseup={handleGlobalMouseUp}
+>
+	<!-- ═══ Barra Superior ═══ -->
 	<header class="h-14 bg-base-100 border-b border-base-200 px-4 flex items-center justify-between z-10 shrink-0 shadow-sm">
 		<div class="flex items-center gap-3">
 			<button onclick={onBack} class="btn btn-ghost btn-sm gap-2">
@@ -327,101 +350,92 @@
 				<span class="badge badge-primary badge-sm font-semibold">{project.tag}</span>
 			</div>
 		</div>
-
 		<div class="flex items-center gap-2">
 			<button onclick={triggerImportJson} class="btn btn-sm btn-ghost gap-1.5 font-semibold">
-				<Upload class="size-4" />
-				Importar JSON
+				<Upload class="size-4" /> Importar JSON
 			</button>
 			<button onclick={exportJson} class="btn btn-sm btn-ghost gap-1.5 font-semibold">
-				<Download class="size-4" />
-				Exportar JSON
+				<Download class="size-4" /> Exportar JSON
 			</button>
 			<button onclick={saveProject} class="btn btn-sm btn-primary gap-1.5 font-bold shadow-lg shadow-primary/10">
-				<Save class="size-4" />
-				Salvar
+				<Save class="size-4" /> Salvar
 			</button>
 		</div>
 	</header>
 
-	<!-- Área de Trabalho de 3 Colunas -->
+	<!-- ═══ Área de 3 Colunas Redimensionáveis ═══ -->
 	<div class="flex-1 flex overflow-hidden">
-		<!-- Coluna Esquerda: Paleta -->
-		<aside class="w-60 bg-base-100 border-r border-base-200 p-4 flex flex-col gap-4 select-none shrink-0">
+
+		<!-- ─── Coluna Esquerda: Paleta ─── -->
+		<aside class="bg-base-100 border-r border-base-200 p-4 flex flex-col gap-4 shrink-0 overflow-y-auto" style="width: {paletteWidth}px">
 			<div>
 				<h3 class="text-sm font-bold tracking-wider text-base-content/60 uppercase">Paleta de Nós</h3>
 				<p class="text-xs text-base-content/50 mt-1">Clique para adicionar nós no canvas</p>
 			</div>
-
 			<button onclick={addBohNode} class="btn btn-outline btn-primary btn-block gap-2 text-sm justify-start font-semibold">
-				<Plus class="size-4" />
-				+ Fala do Boh
+				<Plus class="size-4" /> + Fala do Boh
 			</button>
 		</aside>
 
-		<!-- Coluna Central: Canvas Bidimensional -->
+		<!-- Handle de Resize: Paleta ↔ Canvas -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="w-1.5 cursor-col-resize bg-base-200 hover:bg-primary/30 active:bg-primary/50 transition-colors shrink-0 z-20"
+			onmousedown={(e) => startResize(e, 'palette')}
+		></div>
+
+		<!-- ─── Coluna Central: Canvas Infinito ─── -->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<main
 			bind:this={canvasElement}
-			onmousedown={handleMouseDownBg}
-			onmousemove={handleMouseMoveBg}
-			onmouseup={handleMouseUpBg}
-			class="flex-1 relative overflow-hidden bg-base-300 canvas-grid cursor-grab active:cursor-grabbing"
+			onmousedown={handleCanvasMouseDown}
+			class="flex-1 relative overflow-hidden bg-base-300 canvas-grid"
+			class:cursor-grab={!isPanning && !draggedNodeId && !connectingFromId}
+			class:cursor-grabbing={isPanning}
+			class:cursor-crosshair={!!connectingFromId}
 		>
-			<!-- Container Movível do Canvas (Translação via GPU) -->
 			<div class="absolute inset-0 origin-top-left" style="transform: translate3d({pan.x}px, {pan.y}px, 0)">
-				
-				<!-- SVG Overlay para Renderizar Conexões (Splines) -->
-				<svg class="absolute inset-0 pointer-events-none w-[5000px] h-[5000px]">
-					<!-- Definições para Marcadores de Setas -->
-					<defs>
-						<marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-							<path d="M 0 1.5 L 8 5 L 0 8.5 z" class="fill-base-content/40" />
-						</marker>
-					</defs>
 
+				<!-- SVG Overlay: Conexões (Splines) -->
+				<svg class="absolute inset-0 pointer-events-none w-[8000px] h-[8000px]">
 					<!-- Conexões Existentes -->
 					{#each Object.values(nodes) as node}
 						{#if node.nextId && nodes[node.nextId]}
-							{@const target = nodes[node.nextId]}
-							{@const startX = node.type === 'start' ? node.x + 128 : node.x + 288}
-							{@const startY = node.type === 'start' ? node.y + 32 : node.y + 80}
-							{@const endX = target.x}
-							{@const endY = target.y + 80}
-							{@const offset = Math.abs(endX - startX) * 0.45}
-							
-							<!-- Caminho Interativo da Spline (Bézier Cúbica) -->
+							{@const outPort = getOutputPortPos(node)}
+							{@const inPort = getInputPortPos(nodes[node.nextId])}
+							{@const dx = Math.abs(inPort.x - outPort.x)}
+							{@const offset = Math.max(60, dx * 0.45)}
+
 							<g class="pointer-events-auto group cursor-pointer" onclick={() => removeConnection(node.id)}>
-								<!-- Hitbox mais larga para facilitar clique -->
+								<!-- Hitbox invisível para facilitar clique -->
 								<path
-									d="M {startX} {startY} C {startX + offset} {startY}, {endX - offset} {endY}, {endX} {endY}"
-									fill="none"
-									stroke="transparent"
-									stroke-width="12"
+									d={`M ${outPort.x} ${outPort.y} C ${outPort.x + offset} ${outPort.y}, ${inPort.x - offset} ${inPort.y}, ${inPort.x} ${inPort.y}`}
+									fill="none" stroke="transparent" stroke-width="14"
 								/>
+								<!-- Spline Visível (SEM seta) -->
 								<path
-									d="M {startX} {startY} C {startX + offset} {startY}, {endX - offset} {endY}, {endX} {endY}"
+									d={`M ${outPort.x} ${outPort.y} C ${outPort.x + offset} ${outPort.y}, ${inPort.x - offset} ${inPort.y}, ${inPort.x} ${inPort.y}`}
 									fill="none"
-									class="stroke-base-content/30 group-hover:stroke-error transition-colors duration-200"
-									stroke-width="3.5"
-									marker-end="url(#arrow)"
+									class="stroke-base-content/25 group-hover:stroke-error/70 transition-colors duration-200"
+									stroke-width="2.5"
+									stroke-linecap="round"
 								/>
 							</g>
 						{/if}
 					{/each}
 
-					<!-- Conexão Sendo Arrasta no Momento -->
-					{#if connectingFromId}
-						{@const source = nodes[connectingFromId]}
-						{@const startX = source.type === 'start' ? source.x + 128 : source.x + 288}
-						{@const startY = source.type === 'start' ? source.y + 32 : source.y + 80}
-						{@const offset = Math.abs(mouseX - startX) * 0.45}
+					<!-- Conexão temporária sendo arrastada -->
+					{#if connectingFromId && nodes[connectingFromId]}
+						{@const outPort = getOutputPortPos(nodes[connectingFromId])}
+						{@const dx = Math.abs(mouseX - outPort.x)}
+						{@const offset = Math.max(60, dx * 0.45)}
 						<path
-							d="M {startX} {startY} C {startX + offset} {startY}, {mouseX - offset} {mouseY}, {mouseX} {mouseY}"
+							d={`M ${outPort.x} ${outPort.y} C ${outPort.x + offset} ${outPort.y}, ${mouseX - offset} ${mouseY}, ${mouseX} ${mouseY}`}
 							fill="none"
-							class="stroke-primary/70"
-							stroke-dasharray="4,4"
-							stroke-width="3"
+							class="stroke-primary/60"
+							stroke-dasharray="6,4"
+							stroke-width="2.5"
+							stroke-linecap="round"
 						/>
 					{/if}
 				</svg>
@@ -430,92 +444,93 @@
 				{#each Object.values(nodes) as node (node.id)}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
-						class="absolute bg-base-100 border border-base-200 shadow-md select-none transition-shadow flex flex-col group/node {activePlayNodeId === node.id ? 'border-primary shadow-lg ring-2 ring-primary/20' : ''}"
+						onmousedown={handleNodeMouseDown}
+						class="absolute select-none flex flex-col group/node {activePlayNodeId === node.id ? 'ring-2 ring-primary/30' : ''}"
 						class:w-32={node.type === 'start'}
-						class:h-16={node.type === 'start'}
-						class:rounded-md={node.type === 'start'}
 						class:w-72={node.type === 'boh'}
-						class:rounded-lg={node.type === 'boh'}
 						style="left: {node.x}px; top: {node.y}px;"
 					>
 						{#if node.type === 'start'}
-							<!-- Nó Inicial -->
+							<!-- ══ Nó Start ══ -->
 							<div
-								onmousedown={(e) => handleMouseDownNode(e, node.id)}
-								class="flex-1 flex items-center justify-between px-3 py-2 bg-success/10 text-success rounded-md cursor-grab active:cursor-grabbing font-bold text-sm"
+								onmousedown={(e) => handleNodeHeaderMouseDown(e, node.id)}
+								class="flex items-center justify-between px-3 py-2 bg-base-100 border border-base-200 shadow-md rounded-md cursor-grab active:cursor-grabbing"
 							>
-								<span class="flex items-center gap-1"><Zap class="size-4" /> Start</span>
-								<!-- Portas de Saída -->
+								<span class="flex items-center gap-1.5 text-success font-bold text-sm"><Zap class="size-4" /> Start</span>
+
+								<!-- Porta de Saída (Start) -->
 								<button
-									onmousedown={(e) => handleStartConnection(e, node.id)}
-									class="w-4 h-4 rounded-full bg-success border-2 border-base-100 hover:scale-125 transition-transform translate-x-5 cursor-crosshair"
-									title="Conectar"
-									aria-label="Conectar nó de início"
+									onmousedown={(e) => handleOutputPortMouseDown(e, node.id)}
+									class="w-4 h-4 rounded-full border-2 border-success translate-x-5 hover:scale-125 transition-transform cursor-crosshair {connectedOutputIds.has(node.id) ? 'bg-success' : 'bg-base-100'}"
+									title="Conectar saída"
+									aria-label="Conectar saída do nó Start"
 								></button>
 							</div>
 						{:else}
-							<!-- Nó Boh Dialogue -->
-							<!-- Cabeçalho do Nó -->
-							<div
-								onmousedown={(e) => handleMouseDownNode(e, node.id)}
-								class="px-3 py-2 bg-base-200 border-b border-base-200 rounded-t-lg flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
-							>
-								<!-- Portas de Entrada -->
+							<!-- ══ Nó Diálogo do Boh ══ -->
+							<div class="bg-base-100 border border-base-200 shadow-md rounded-lg overflow-hidden">
+								<!-- Header (arrastável) -->
 								<div
-									class="w-4 h-4 rounded-full bg-primary border-2 border-base-100 -translate-x-5"
-									title="Entrada"
-								></div>
-
-								<span class="font-bold text-xs text-base-content/70 uppercase tracking-wide">Diálogo do Boh</span>
-								
-								<div class="flex items-center gap-1.5">
+									onmousedown={(e) => handleNodeHeaderMouseDown(e, node.id)}
+									class="px-3 py-2 bg-base-200/60 border-b border-base-200 flex items-center justify-between cursor-grab active:cursor-grabbing"
+								>
+									<!-- Porta de Entrada -->
 									<button
-										onclick={() => deleteNode(node.id)}
-										class="text-base-content/40 hover:text-error transition-colors p-0.5 rounded"
-										title="Excluir Nó"
-									>
-										<Trash2 class="size-4" />
-									</button>
-									<!-- Portas de Saída -->
-									<button
-										onmousedown={(e) => handleStartConnection(e, node.id)}
-										class="w-4 h-4 rounded-full bg-primary border-2 border-base-100 translate-x-5 hover:scale-125 transition-transform cursor-crosshair"
-										title="Conectar"
-										aria-label="Conectar saída do diálogo"
+										class="w-4 h-4 rounded-full border-2 border-primary -translate-x-5 {connectedInputIds.has(node.id) ? 'bg-primary' : 'bg-base-100'}"
+										title="Entrada"
+										aria-label="Porta de entrada"
 									></button>
-								</div>
-							</div>
 
-							<!-- Corpo do Nó -->
-							<div class="p-3 flex flex-col gap-3">
-								<div class="form-control">
-									<label class="label py-1" for="expr-{node.id}">
-										<span class="label-text text-[11px] font-bold text-base-content/60">Expressão do Boh</span>
-									</label>
-									<select
-										id="expr-{node.id}"
-										bind:value={node.expression}
-										class="select select-bordered select-xs w-full bg-base-200 font-semibold text-xs rounded-md"
-									>
-										<option value="idle">Idle (Padrão)</option>
-										<option value="pokerface">Pokerface</option>
-										<option value="thinking">Pensando</option>
-										<option value="open mouth">Falando</option>
-										<option value="annoyed">Irritado</option>
-										<option value="looking down">Desanimado</option>
-									</select>
+									<span class="font-bold text-xs text-base-content/70 uppercase tracking-wide">Diálogo do Boh</span>
+
+									<div class="flex items-center gap-1.5">
+										<button
+											onclick={() => deleteNode(node.id)}
+											class="text-base-content/40 hover:text-error transition-colors p-0.5 rounded"
+											title="Excluir Nó"
+										>
+											<Trash2 class="size-4" />
+										</button>
+										<!-- Porta de Saída -->
+										<button
+											onmousedown={(e) => handleOutputPortMouseDown(e, node.id)}
+											class="w-4 h-4 rounded-full border-2 border-primary translate-x-5 hover:scale-125 transition-transform cursor-crosshair {connectedOutputIds.has(node.id) ? 'bg-primary' : 'bg-base-100'}"
+											title="Conectar saída"
+											aria-label="Conectar saída do diálogo"
+										></button>
+									</div>
 								</div>
 
-								<div class="form-control">
-									<label class="label py-1" for="text-{node.id}">
-										<span class="label-text text-[11px] font-bold text-base-content/60">Texto da Fala</span>
-									</label>
-									<textarea
-										id="text-{node.id}"
-										bind:value={node.text}
-										class="textarea textarea-bordered text-xs leading-relaxed font-medium bg-base-200 rounded-md h-20 resize-none placeholder:text-base-content/45"
-										placeholder="Escreva a resposta do Boh aqui..."
-									></textarea>
+								<!-- Corpo -->
+								<div class="p-3 flex flex-col gap-3">
+									<div class="form-control">
+										<label class="label py-1" for="expr-{node.id}">
+											<span class="label-text text-[11px] font-bold text-base-content/60">Expressão do Boh</span>
+										</label>
+										<select
+											id="expr-{node.id}"
+											bind:value={node.expression}
+											class="select select-bordered select-xs w-full bg-base-200 font-semibold text-xs rounded-md"
+										>
+											<option value="idle">Idle (Padrão)</option>
+											<option value="pokerface">Pokerface</option>
+											<option value="thinking">Pensando</option>
+											<option value="open mouth">Falando</option>
+											<option value="annoyed">Irritado</option>
+											<option value="looking down">Desanimado</option>
+										</select>
+									</div>
+									<div class="form-control">
+										<label class="label py-1" for="text-{node.id}">
+											<span class="label-text text-[11px] font-bold text-base-content/60">Texto da Fala</span>
+										</label>
+										<textarea
+											id="text-{node.id}"
+											bind:value={node.text}
+											class="textarea textarea-bordered text-xs leading-relaxed font-medium bg-base-200 rounded-md h-20 resize-none placeholder:text-base-content/45"
+											placeholder="Escreva a fala do Boh aqui..."
+										></textarea>
+									</div>
 								</div>
 							</div>
 						{/if}
@@ -524,13 +539,20 @@
 			</div>
 		</main>
 
-		<!-- Coluna Direita: Player de Terminal macOS -->
-		<aside class="w-96 bg-base-100 border-l border-base-200 flex flex-col z-10 shrink-0 select-none">
+		<!-- Handle de Resize: Canvas ↔ Terminal -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="w-1.5 cursor-col-resize bg-base-200 hover:bg-primary/30 active:bg-primary/50 transition-colors shrink-0 z-20"
+			onmousedown={(e) => startResize(e, 'terminal')}
+		></div>
+
+		<!-- ─── Coluna Direita: Player de Terminal macOS ─── -->
+		<aside class="bg-base-100 border-l border-base-200 flex flex-col z-10 shrink-0" style="width: {terminalWidth}px">
 			<!-- Painel de Título -->
 			<div class="p-4 border-b border-base-200 flex items-center justify-between shrink-0">
 				<div>
 					<h3 class="text-sm font-bold tracking-wider text-base-content/60 uppercase">Simulação</h3>
-					<p class="text-xs text-base-content/50 mt-1">Reproduza e teste o diálogo ativo</p>
+					<p class="text-xs text-base-content/50 mt-1">Reproduza e teste o diálogo</p>
 				</div>
 				<div class="flex items-center gap-1.5">
 					{#if isPlaying}
@@ -545,12 +567,12 @@
 				</div>
 			</div>
 
-			<!-- Terminal Mockup macOS -->
+			<!-- Terminal macOS -->
 			<div class="flex-1 p-4 flex flex-col min-h-0 bg-base-200/30">
 				<div class="flex-1 bg-neutral text-neutral-content rounded-lg border border-neutral-800 flex flex-col min-h-0 shadow-xl overflow-hidden">
-					
-					<!-- macOS Window Title Bar -->
-					<div class="bg-base-200 px-4 py-3 flex items-center gap-2 select-none relative border-b border-neutral-900 shrink-0">
+
+					<!-- macOS Title Bar -->
+					<div class="bg-base-200 px-4 py-3 flex items-center gap-2 relative border-b border-neutral-900 shrink-0">
 						<div class="flex items-center gap-1.5 z-10">
 							<div class="w-3 h-3 rounded-full bg-error opacity-80"></div>
 							<div class="w-3 h-3 rounded-full bg-warning opacity-80"></div>
@@ -561,28 +583,39 @@
 						</div>
 					</div>
 
-					<!-- Terminal Screen Body -->
-					<div class="p-4 flex-1 font-mono text-xs flex flex-col gap-4 overflow-y-auto min-h-0 scrollbar-thin select-text">
-						
-						<!-- Boh ASCII Art Character -->
-						<pre class="text-primary font-bold text-[11px] leading-tight select-none shrink-0 bg-primary/5 py-2.5 px-3 border border-primary/10 rounded-md">
-{getBohAvatar(currentExpression)}
-						</pre>
+					<!-- Terminal Body -->
+					<div class="px-5 py-4 flex-1 font-mono text-[13px] flex flex-col gap-0 overflow-y-auto min-h-0 select-text">
 
-						<!-- Output Terminal Log -->
-						<div class="flex-1 flex flex-col gap-2 leading-relaxed">
-							{#each outputLines as line, i}
-								{#if line === ''}
-									<br />
-								{:else if line.startsWith('[')}
-									<div class="text-primary/70 text-[11px] font-semibold">{line}</div>
-								{:else if line.startsWith('Erro:')}
-									<div class="text-error font-bold">{line}</div>
-								{:else}
-									<div class="text-neutral-content/90 font-medium whitespace-pre-wrap"><span class="text-success font-bold mr-1.5">&gt;</span>{line}</div>
-								{/if}
-							{/each}
-						</div>
+						<!-- Histórico de diálogos finalizados -->
+						{#each terminalHistory as entry}
+							{#if entry.type === 'system'}
+								<div class="text-primary/50 text-[11px] font-semibold py-1">{entry.text}</div>
+							{:else if entry.type === 'error'}
+								<div class="text-error font-bold py-1">{entry.text}</div>
+							{:else}
+								<div class="flex items-baseline gap-0 py-0.5 text-neutral-content/60 whitespace-pre">
+									<span class="text-neutral-content/30 shrink-0">{entry.face}  ──┤</span>
+									<span class="text-neutral-content/60 ml-1">{entry.text}</span>
+									<span class="text-neutral-content/30"> │</span>
+								</div>
+							{/if}
+						{/each}
+
+						<!-- Linha ativa sendo digitada agora -->
+						{#if isPlaying && currentBubbleText}
+							<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
+								<span class="text-neutral-content/50 shrink-0">{currentFace}  ──┤</span>
+								<span class="text-neutral-content ml-1">{currentBubbleText}</span>
+								<span class="text-neutral-content/50 blink-cursor"> │</span>
+							</div>
+						{:else if !isPlaying && terminalHistory.length === 0}
+							<div class="flex items-baseline gap-0 py-0.5 whitespace-pre text-neutral-content/30">
+								<span>{currentFace}  ──┤</span>
+								<span class="ml-1 italic">Aperte Play para iniciar...</span>
+								<span> │</span>
+							</div>
+						{/if}
+
 					</div>
 				</div>
 			</div>
@@ -593,15 +626,23 @@
 <style>
 	.canvas-grid {
 		background-size: 24px 24px;
-		background-image: 
+		background-image:
 			linear-gradient(to right, rgba(0, 0, 0, 0.05) 1px, transparent 1px),
 			linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
 	}
 	:global([data-theme="mocha"]) .canvas-grid,
 	:global([data-theme="macchiato"]) .canvas-grid,
 	:global([data-theme="frappe"]) .canvas-grid {
-		background-image: 
+		background-image:
 			linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
 			linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+	}
+
+	/* Cursor piscante da barra do balão */
+	.blink-cursor {
+		animation: blink 0.8s step-end infinite;
+	}
+	@keyframes blink {
+		50% { opacity: 0; }
 	}
 </style>
