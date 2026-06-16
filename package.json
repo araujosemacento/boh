@@ -47,6 +47,7 @@
 	},
 	"dependencies": {
 		"@catppuccin/palette": "^1.8.0",
+		"@chenglou/pretext": "^0.0.8",
 		"@lucide/svelte": "^1.18.0"
 	}
 }

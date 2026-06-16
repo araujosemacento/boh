@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ArrowLeft, Save, Download, Upload, Play, Square, Plus, Trash2, Zap } from '@lucide/svelte';
 	import type { Project, DialogueNode } from '../types';
+	import { prepareWithSegments, layoutWithLines, measureNaturalWidth } from '@chenglou/pretext';
 
 	let { project = $bindable(), onBack }: { project: Project; onBack: () => void } = $props();
 
@@ -36,6 +37,42 @@
 	// Helpers
 	const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 	const choice = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
+
+	// Helper para quebrar linhas de diálogo de forma responsiva com pretext
+	const wrapDialogueText = (text: string, currentTerminalWidth: number): string[] => {
+		if (typeof window === 'undefined' || !text) return [text || ''];
+		
+		// O terminal tem padding lateral px-5 (20px cada lado = 40px)
+		// O painel do terminal fica dentro de uma área flex com p-4 (16px cada lado = 32px)
+		// A borda do mockup-window toma 2px (1px cada lado)
+		// Total de padding/bordas fora da área útil = 74px
+		const availWidth = Math.max(100, currentTerminalWidth - 74);
+		
+		const font = "13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+		let charWidth = 8;
+		try {
+			const preparedChar = prepareWithSegments("A", font);
+			charWidth = measureNaturalWidth(preparedChar) || 8;
+		} catch (e) {
+			// Fallback silencioso
+		}
+		
+		// O prefixo '[ ▀ ° ▀]  ──┤ ' tem 13 caracteres
+		// O sufixo ' │' tem 2 caracteres
+		const prefixChars = 13;
+		const suffixChars = 2;
+		
+		const textMaxWidth = Math.max(50, availWidth - (prefixChars + suffixChars) * charWidth);
+		
+		try {
+			const preparedText = prepareWithSegments(text, font);
+			const layoutResult = layoutWithLines(preparedText, textMaxWidth, 16);
+			return layoutResult.lines.map(line => line.text);
+		} catch (e) {
+			console.error("Erro no wrapping do pretext:", e);
+			return [text];
+		}
+	};
 
 	// Expressões fiéis ao Boh.py original
 	const bohExpressions: Record<string, string[]> = {
@@ -569,16 +606,16 @@
 
 			<!-- Terminal macOS -->
 			<div class="flex-1 p-4 flex flex-col min-h-0 bg-base-200/30">
-				<div class="flex-1 bg-neutral text-neutral-content rounded-lg border border-neutral-800 flex flex-col min-h-0 shadow-xl overflow-hidden">
+				<div class="flex-1 bg-[#0c0f16] text-[#e2e8f0] rounded-lg border border-[#1e2230] flex flex-col min-h-0 shadow-xl overflow-hidden">
 
 					<!-- macOS Title Bar -->
-					<div class="bg-base-200 px-4 py-3 flex items-center gap-2 relative border-b border-neutral-900 shrink-0">
+					<div class="bg-[#161925] px-4 py-3 flex items-center gap-2 relative border-b border-[#0c0f16] shrink-0">
 						<div class="flex items-center gap-1.5 z-10">
 							<div class="w-3 h-3 rounded-full bg-error opacity-80"></div>
 							<div class="w-3 h-3 rounded-full bg-warning opacity-80"></div>
 							<div class="w-3 h-3 rounded-full bg-success opacity-80"></div>
 						</div>
-						<div class="w-full text-center text-[10px] tracking-wide font-mono text-base-content/50 uppercase font-bold absolute left-0 pr-4">
+						<div class="w-full text-center text-[10px] tracking-wide font-mono text-[#8a91a5] uppercase font-bold absolute left-0 pr-4">
 							Boh.py Terminal
 						</div>
 					</div>
@@ -589,30 +626,56 @@
 						<!-- Histórico de diálogos finalizados -->
 						{#each terminalHistory as entry}
 							{#if entry.type === 'system'}
-								<div class="text-primary/50 text-[11px] font-semibold py-1">{entry.text}</div>
+								<div class="text-[#38bdf8] text-[11px] font-semibold py-1">{entry.text}</div>
 							{:else if entry.type === 'error'}
-								<div class="text-error font-bold py-1">{entry.text}</div>
+								<div class="text-[#f87171] font-bold py-1">{entry.text}</div>
 							{:else}
-								<div class="flex items-baseline gap-0 py-0.5 text-neutral-content/60 whitespace-pre">
-									<span class="text-neutral-content/30 shrink-0">{entry.face}  ──┤</span>
-									<span class="text-neutral-content/60 ml-1">{entry.text}</span>
-									<span class="text-neutral-content/30"> │</span>
-								</div>
+								{@const wrappedLines = wrapDialogueText(entry.text, terminalWidth)}
+								{#each wrappedLines as line, i}
+									<div class="flex items-baseline gap-0 py-0.5 text-[#f8fafc] whitespace-pre">
+										{#if i === 0}
+											<span class="text-[#4ade80] font-semibold shrink-0">{entry.face}{"  ──┤"}</span>
+											<span class="text-[#f8fafc] ml-1">{line}</span>
+											{#if wrappedLines.length === 1}
+												<span class="text-[#4ade80] font-semibold">{" │"}</span>
+											{/if}
+										{:else}
+											<span class="text-[#4ade80] font-semibold shrink-0">{"            │"}</span>
+											<span class="text-[#f8fafc] ml-1">{line}</span>
+											{#if i === wrappedLines.length - 1}
+												<span class="text-[#4ade80] font-semibold">{" │"}</span>
+											{/if}
+										{/if}
+									</div>
+								{/each}
 							{/if}
 						{/each}
 
 						<!-- Linha ativa sendo digitada agora -->
 						{#if isPlaying && currentBubbleText}
-							<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
-								<span class="text-neutral-content/50 shrink-0">{currentFace}  ──┤</span>
-								<span class="text-neutral-content ml-1">{currentBubbleText}</span>
-								<span class="text-neutral-content/50 blink-cursor"> │</span>
-							</div>
+							{@const activeLines = wrapDialogueText(currentBubbleText, terminalWidth)}
+							{#each activeLines as line, i}
+								<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
+									{#if i === 0}
+										<span class="text-[#4ade80] font-semibold shrink-0">{currentFace}{"  ──┤"}</span>
+										<span class="text-[#f8fafc] ml-1">{line}</span>
+										{#if activeLines.length === 1}
+											<span class="text-[#4ade80] font-semibold blink-cursor">{" │"}</span>
+										{/if}
+									{:else}
+										<span class="text-[#4ade80] font-semibold shrink-0">{"            │"}</span>
+										<span class="text-[#f8fafc] ml-1">{line}</span>
+										{#if i === activeLines.length - 1}
+											<span class="text-[#4ade80] font-semibold blink-cursor">{" │"}</span>
+										{/if}
+									{/if}
+								</div>
+							{/each}
 						{:else if !isPlaying && terminalHistory.length === 0}
-							<div class="flex items-baseline gap-0 py-0.5 whitespace-pre text-neutral-content/30">
-								<span>{currentFace}  ──┤</span>
-								<span class="ml-1 italic">Aperte Play para iniciar...</span>
-								<span> │</span>
+							<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
+								<span class="text-[#4ade80]/50 shrink-0">{currentFace}{"  ──┤"}</span>
+								<span class="ml-1 italic text-slate-400">Aperte Play para iniciar...</span>
+								<span class="text-[#4ade80]/50">{" │"}</span>
 							</div>
 						{/if}
 
