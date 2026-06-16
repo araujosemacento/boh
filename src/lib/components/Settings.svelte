@@ -1,43 +1,65 @@
 <script lang="ts">
 	import { Palette, IceCreamBowl, Soup, CupSoda, Beaker, Coffee } from '@lucide/svelte';
-	import { onMount } from 'svelte';
 
-	let theme: string = $state(''); // will be set on mount
+	// 1. Detecta o tema do sistema operacional
+	const getSystemTheme = () => {
+		if (typeof window === 'undefined') return 'latte';
+		return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'mocha' : 'latte';
+	};
 
-	const defaultTheme = $derived(
-		typeof window === 'undefined'
-			? ''
-			: window.matchMedia('(prefers-color-scheme: dark)').matches
-				? 'mocha'
-				: 'latte'
+	// 2. Inicializa o estado IMEDIATAMENTE, pegando o que o script do app.html JÁ INJETOU no HTML
+	const getInitialTheme = () => {
+		if (typeof document !== 'undefined' && document.documentElement.dataset.theme) {
+			return document.documentElement.dataset.theme;
+		}
+		return getSystemTheme();
+	};
+
+	let theme: string = $state(getInitialTheme());
+
+	// Controla se o usuário está usando o tema do sistema ou um fixo
+	let isUsingSystemDefault = $state(
+		typeof window !== 'undefined' ? !localStorage.getItem('preferred-theme') : true
 	);
 
-	// Detecção de preferência de cor movida para o onMount abaixo
-
-	// Sincroniza data‑theme no <html> e persiste a escolha
+	// 3. Atualiza o DOM e o localStorage reativamente
 	$effect(() => {
 		if (typeof document !== 'undefined' && theme) {
 			document.documentElement.dataset.theme = theme;
 
-			try {
+			if (isUsingSystemDefault) {
+				localStorage.removeItem('preferred-theme');
+			} else {
 				localStorage.setItem('preferred-theme', theme);
-			} catch {
-				/* empty */
 			}
 		}
 	});
 
-	// Carrega tema salvo ao montar o componente
-	onMount(() => {
-		if (typeof window !== 'undefined') {
-			const saved = localStorage.getItem('preferred-theme');
-			if (saved) {
-				theme = saved;
-			} else {
-				theme = defaultTheme;
+	// 4. Ouve mudanças no sistema operacional em tempo real (caso o usuário mude o Windows de dark para light)
+	$effect(() => {
+		if (typeof window === 'undefined') return;
+
+		const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		const handleChange = () => {
+			if (isUsingSystemDefault) {
+				theme = getSystemTheme();
 			}
-		}
+		};
+
+		mediaQuery.addEventListener('change', handleChange);
+		return () => mediaQuery.removeEventListener('change', handleChange);
 	});
+
+	// Função auxiliar para o botão "Padrão"
+	const setSystemDefault = () => {
+		isUsingSystemDefault = true;
+		theme = getSystemTheme();
+	};
+
+	const setCustomTheme = (newTheme: string) => {
+		isUsingSystemDefault = false;
+		theme = newTheme;
+	};
 </script>
 
 <div class="dropdown dropdown-top dropdown-end fixed bottom-4 right-4 z-50">
@@ -50,9 +72,9 @@
 			<button
 				type="button"
 				class="btn btn-sm btn-block btn-ghost justify-start theme-controller duration-300"
-				class:bg-primary={theme === 'default'}
-				class:text-base-100={theme === 'default'}
-				onclick={() => (theme = 'default')}
+				class:bg-primary={isUsingSystemDefault}
+				class:text-base-100={isUsingSystemDefault}
+				onclick={setSystemDefault}
 			>
 				<IceCreamBowl />
 				<span class="ml-2">Padrão</span>
@@ -62,9 +84,9 @@
 			<button
 				type="button"
 				class="btn btn-sm btn-block btn-ghost justify-start theme-controller duration-300"
-				class:bg-primary={theme === 'latte'}
-				class:text-base-100={theme === 'latte'}
-				onclick={() => (theme = 'latte')}
+				class:bg-primary={!isUsingSystemDefault && theme === 'latte'}
+				class:text-base-100={!isUsingSystemDefault && theme === 'latte'}
+				onclick={() => setCustomTheme('latte')}
 			>
 				<Soup />
 				<span class="ml-2">Latte</span>
@@ -74,9 +96,9 @@
 			<button
 				type="button"
 				class="btn btn-sm btn-block btn-ghost justify-start theme-controller duration-300"
-				class:bg-primary={theme === 'frappe'}
-				class:text-base-100={theme === 'frappe'}
-				onclick={() => (theme = 'frappe')}
+				class:bg-primary={!isUsingSystemDefault && theme === 'frappe'}
+				class:text-base-100={!isUsingSystemDefault && theme === 'frappe'}
+				onclick={() => setCustomTheme('frappe')}
 			>
 				<CupSoda />
 				<span class="ml-2">Frappé</span>
@@ -86,9 +108,9 @@
 			<button
 				type="button"
 				class="btn btn-sm btn-block btn-ghost justify-start theme-controller duration-300"
-				class:bg-primary={theme === 'macchiato'}
-				class:text-base-100={theme === 'macchiato'}
-				onclick={() => (theme = 'macchiato')}
+				class:bg-primary={!isUsingSystemDefault && theme === 'macchiato'}
+				class:text-base-100={!isUsingSystemDefault && theme === 'macchiato'}
+				onclick={() => setCustomTheme('macchiato')}
 			>
 				<Beaker />
 				<span class="ml-2">Macchiato</span>
@@ -98,9 +120,9 @@
 			<button
 				type="button"
 				class="btn btn-sm btn-block btn-ghost justify-start theme-controller duration-300"
-				class:bg-primary={theme === 'mocha'}
-				class:text-base-100={theme === 'mocha'}
-				onclick={() => (theme = 'mocha')}
+				class:bg-primary={!isUsingSystemDefault && theme === 'mocha'}
+				class:text-base-100={!isUsingSystemDefault && theme === 'mocha'}
+				onclick={() => setCustomTheme('mocha')}
 			>
 				<Coffee />
 				<span class="ml-2">Mocha</span>

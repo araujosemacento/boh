@@ -4,6 +4,19 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<meta name="text-scale" content="scale" />
+		<script>
+			(function () {
+				try {
+					var saved = localStorage.getItem('preferred-theme');
+					if (saved) {
+						document.documentElement.dataset.theme = saved;
+					} else {
+						var isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+						document.documentElement.dataset.theme = isDark ? 'mocha' : 'latte';
+					}
+				} catch (e) {}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
