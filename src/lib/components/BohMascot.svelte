@@ -26,7 +26,7 @@
 
 	// Rastreia o movimento do mouse e calcula os offsets para cada olho de forma independente
 	function handleGlobalMouseMove(e: MouseEvent) {
-		const maxOffset = 12; // Movimento maior e mais expressivo
+		const maxOffset = 8; // Movimento proporcional ao tamanho reduzido do widget
 
 		// Cálculo do olho esquerdo
 		if (leftEyeEl) {
@@ -41,7 +41,7 @@
 				targetLeft = { x: 0, y: 0 };
 			} else {
 				// Easing cúbico para desacelerar com a distância
-				const factor = Math.min(distance / 200, 1);
+				const factor = Math.min(distance / 180, 1);
 				const eased = 1 - Math.pow(1 - factor, 3);
 				targetLeft = {
 					x: (dx / distance) * maxOffset * eased,
@@ -62,7 +62,7 @@
 			if (distance === 0) {
 				targetRight = { x: 0, y: 0 };
 			} else {
-				const factor = Math.min(distance / 200, 1);
+				const factor = Math.min(distance / 180, 1);
 				const eased = 1 - Math.pow(1 - factor, 3);
 				targetRight = {
 					x: (dx / distance) * maxOffset * eased,
@@ -89,7 +89,6 @@
 		let curRightX = 0;
 		let curRightY = 0;
 
-		// Easing lag constante (lerp suave)
 		const easeFactor = 0.12;
 
 		function animate() {
@@ -114,18 +113,18 @@
 
 <svelte:window onmousemove={handleGlobalMouseMove} />
 
-<!-- Container do Mascote Fixo e Monocromático (Sem painel de fundo) -->
+<!-- Container do Mascote Fixo e Monocromático (Sem painel de fundo, tamanho reduzido) -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	bind:this={mascotContainer}
 	onmouseenter={() => (isHoveringBoh = true)}
 	onmouseleave={() => (isHoveringBoh = false)}
-	class="fixed bottom-6 left-6 z-50 flex items-center justify-center select-none bg-transparent p-4 transition-all duration-300 hover:scale-[1.04]"
+	class="fixed bottom-6 left-6 z-50 flex items-center justify-center select-none bg-transparent p-3 transition-all duration-300 hover:scale-[1.04]"
 	title="Este é o Boh!"
 >
 	<div
-		class="flex items-center gap-6 text-3xl font-black font-mono tracking-widest leading-none select-none text-base-content/85"
-		style="font-weight: 900; -webkit-text-stroke: 1.5px currentColor; text-shadow: 0.5px 0.5px 0px currentColor;"
+		class="flex items-center gap-3.5 text-2xl font-black font-mono tracking-widest leading-none select-none text-base-content/85"
+		style="font-weight: 900; -webkit-text-stroke: 1.2px currentColor; text-shadow: 0.5px 0.5px 0px currentColor;"
 	>
 		<!-- Colchete Esquerdo -->
 		<span class="text-base-content/30">[</span>
@@ -140,7 +139,7 @@
 		</span>
 
 		<!-- Boca Dinâmica -->
-		<span class="inline-block text-base-content/80">
+		<span class="inline-block text-base-content/80 font-bold">
 			{mouthChar}
 		</span>
 

@@ -7,6 +7,7 @@
 	import demoProjects from '$lib/assets/demos.json';
 	import JSZip from 'jszip';
 	import BohMascot from '$lib/components/BohMascot.svelte';
+	import DialoguePlayer from '$lib/components/DialoguePlayer.svelte';
 
 	// 1. Estado de Projetos Carregado do LocalStorage ou Inicializado com Padrões
 	let projects = $state<Project[]>(demoProjects as unknown as Project[]);
@@ -35,6 +36,7 @@
 	let selectedProjectIds = $state<string[]>([]);
 	let lastSelectedId = $state<string | null>(null);
 	let showExportModal = $state(false);
+	let playingProject = $state<Project | null>(null);
 
 	// Estados do Drag-to-Select
 	let gridContainer = $state<HTMLDivElement | null>(null);
@@ -55,17 +57,85 @@
 	});
 
 	// Filtro de Busca Reativo
+	// Filtro de Busca Reativo com suporte a tag:"nome"
 	const filteredProjects = $derived(
 		projects.filter((project) => {
-			const query = search.trim().toLowerCase();
+			const query = search.trim();
 			if (!query) return true;
 
+			// Suporta tag:recursos, tag:"Demonstração", tag:'Rascunho'
+			const tagMatch = query.match(/tag:\s*(?:"([^"]+)"|'([^']+)'|(\S+))/i);
+			if (tagMatch) {
+				const tagQuery = (tagMatch[1] || tagMatch[2] || tagMatch[3]).toLowerCase();
+				const remainingQuery = query
+					.replace(/tag:\s*(?:"[^"]*"|'[^']*'|\S+)/i, '')
+					.trim()
+					.toLowerCase();
+
+				const matchesTag = project.tag.toLowerCase() === tagQuery;
+				if (!matchesTag) return false;
+
+				if (!remainingQuery) return true;
+				return [project.name, project.description].join(' ').toLowerCase().includes(remainingQuery);
+			}
+
+			const queryLower = query.toLowerCase();
 			return [project.name, project.description, project.tag]
 				.join(' ')
 				.toLowerCase()
-				.includes(query);
+				.includes(queryLower);
 		})
 	);
+
+	// Estados e handlers para Reordenação por Arraste (Drag and Drop)
+	let draggedProjectId = $state<string | null>(null);
+
+	function handleDragStart(projectId: string, e: DragEvent) {
+		const target = e.target as HTMLElement;
+		// Apenas inicia arrastar se NÃO for em elementos interativos
+		if (
+			target.closest('button') ||
+			target.closest('a') ||
+			target.closest('input') ||
+			target.closest('select')
+		) {
+			e.preventDefault();
+			return;
+		}
+		draggedProjectId = projectId;
+		if (e.dataTransfer) {
+			e.dataTransfer.effectAllowed = 'move';
+			e.dataTransfer.setData('text/plain', projectId);
+		}
+	}
+
+	function handleDragOver(projectId: string, e: DragEvent) {
+		e.preventDefault();
+		if (e.dataTransfer) {
+			e.dataTransfer.dropEffect = 'move';
+		}
+	}
+
+	function handleDrop(targetProjectId: string, e: DragEvent) {
+		e.preventDefault();
+		if (!draggedProjectId || draggedProjectId === targetProjectId) return;
+
+		const draggedIndex = projects.findIndex((p) => p.id === draggedProjectId);
+		const targetIndex = projects.findIndex((p) => p.id === targetProjectId);
+
+		if (draggedIndex !== -1 && targetIndex !== -1) {
+			const updatedProjects = [...projects];
+			const [draggedProject] = updatedProjects.splice(draggedIndex, 1);
+			updatedProjects.splice(targetIndex, 0, draggedProject);
+			projects = updatedProjects;
+			localStorage.setItem('saved-projects-v2', JSON.stringify(projects));
+		}
+		draggedProjectId = null;
+	}
+
+	function handleDragEnd() {
+		draggedProjectId = null;
+	}
 
 	// Criação de Novo Projeto
 	const handleNewProject = () => {
@@ -307,7 +377,11 @@
 
 	// Exclusão individual de projeto
 	function handleSingleDelete(project: Project) {
-		if (confirm(`Deseja mesmo excluir o projeto "${project.name}"? Esta ação é irreversível e removerá todos os dados salvos.`)) {
+		if (
+			confirm(
+				`Deseja mesmo excluir o projeto "${project.name}"? Esta ação é irreversível e removerá todos os dados salvos.`
+			)
+		) {
 			projects = projects.filter((p) => p.id !== project.id);
 			localStorage.setItem('saved-projects-v2', JSON.stringify(projects));
 			selectedProjectIds = selectedProjectIds.filter((id) => id !== project.id);
@@ -320,7 +394,11 @@
 	// Exclusão em lote de projetos selecionados
 	function handleBulkDelete() {
 		const count = selectedProjectIds.length;
-		if (confirm(`Deseja mesmo excluir os ${count} projetos selecionados? Esta ação é irreversível e removerá todos os dados salvos.`)) {
+		if (
+			confirm(
+				`Deseja mesmo excluir os ${count} projetos selecionados? Esta ação é irreversível e removerá todos os dados salvos.`
+			)
+		) {
 			projects = projects.filter((p) => !selectedProjectIds.includes(p.id));
 			localStorage.setItem('saved-projects-v2', JSON.stringify(projects));
 			selectedProjectIds = [];
@@ -364,13 +442,13 @@
 	<!-- Dashboard de Projetos -->
 	<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 	<div
-		class="min-h-screen bg-base-300 text-base-content flex flex-col select-none"
+		class="h-screen bg-base-300 text-base-content flex flex-col select-none overflow-hidden"
 		onmousedown={handleMouseDown}
 		role="region"
 		aria-label="Dashboard de Projetos"
 	>
 		<section
-			class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:pl-28 lg:pr-8 lg:py-8 flex-1 pb-28"
+			class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 h-full overflow-hidden flex-1"
 		>
 			<header
 				class="flex flex-col gap-5 rounded-lg border border-base-200 bg-base-100 p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8"
@@ -407,7 +485,7 @@
 				</div>
 			</header>
 
-			<section class="space-y-4">
+			<section class="flex-1 min-h-0 overflow-y-auto custom-scrollbar pr-2 pb-24 space-y-4">
 				<div class="flex items-center justify-between gap-3">
 					<div>
 						<h2 class="text-lg font-semibold sm:text-xl">Lista</h2>
@@ -417,18 +495,29 @@
 				{#if filteredProjects.length > 0}
 					<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" bind:this={gridContainer}>
 						{#each filteredProjects as project}
-							<button
-								type="button"
-								onclick={(e) => handleCardClick(project, e)}
-								class="project-card-btn text-left cursor-pointer transition-transform duration-200 bg-transparent border-0 p-0"
+							<div
+								class="project-card-btn text-left"
 								data-project-id={project.id}
+								draggable="true"
+								role="listitem"
+								ondragstart={(e) => handleDragStart(project.id, e)}
+								ondragover={(e) => handleDragOver(project.id, e)}
+								ondrop={(e) => handleDrop(project.id, e)}
+								ondragend={handleDragEnd}
 							>
 								<ProjectCard
 									{project}
 									selected={selectedProjectIds.includes(project.id)}
+									isDragging={draggedProjectId === project.id}
+									onSelect={(e) => handleCardClick(project, e)}
+									onPlay={() => (playingProject = project)}
+									onEdit={() => (activeProject = project)}
 									onDelete={() => handleSingleDelete(project)}
+									onTagClick={(tag) => {
+										search = `tag:"${tag}"`;
+									}}
 								/>
-							</button>
+							</div>
 						{/each}
 					</div>
 				{:else}
@@ -451,16 +540,33 @@
 
 		<!-- Barra de Ações Flutuante (Multi-seleção) -->
 		{#if selectedProjectIds.length > 0}
-			<div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-base-100 border border-base-300 rounded-xl shadow-2xl px-6 py-4 flex items-center gap-5 justify-between w-[calc(100%-2rem)] max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+			<div
+				class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-base-100 border border-base-300 rounded-xl shadow-2xl px-6 py-4 flex items-center gap-5 justify-between w-[calc(100%-2rem)] max-w-xl animate-in fade-in slide-in-from-bottom-4 duration-300"
+			>
 				<div class="flex items-center gap-3">
 					<div class="bg-primary/10 text-primary rounded-lg p-2.5">
-						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							class="size-5"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+							/>
 						</svg>
 					</div>
 					<div>
-						<p class="font-semibold text-sm text-base-content">{selectedProjectIds.length} selecionado{selectedProjectIds.length > 1 ? 's' : ''}</p>
-						<p class="text-xs text-base-content/60">Shift/Ctrl+Clique ou arraste para selecionar mais</p>
+						<p class="font-semibold text-sm text-base-content">
+							{selectedProjectIds.length} selecionado{selectedProjectIds.length > 1 ? 's' : ''}
+						</p>
+						<p class="text-xs text-base-content/60">
+							Shift/Ctrl+Clique ou arraste para selecionar mais
+						</p>
 					</div>
 				</div>
 				<div class="flex items-center gap-2">
@@ -479,8 +585,19 @@
 						class="btn btn-error btn-outline btn-sm px-4 gap-1.5"
 						onclick={handleBulkDelete}
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
-							<path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.34 9m-4.78 0L9 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							class="size-4"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="m14.74 9-.34 9m-4.78 0L9 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+							/>
 						</svg>
 						Excluir
 					</button>
@@ -489,8 +606,19 @@
 						class="btn btn-primary btn-sm px-4 gap-1.5 shadow-md shadow-primary/20"
 						onclick={() => (showExportModal = true)}
 					>
-						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="2"
+							stroke="currentColor"
+							class="size-4"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+							/>
 						</svg>
 						Exportar
 					</button>
@@ -501,10 +629,23 @@
 		<!-- Modal de Diálogo Customizado para Exportação -->
 		{#if showExportModal}
 			<div class="modal modal-open z-50">
-				<div class="modal-box max-w-md bg-base-100 border border-base-200 shadow-2xl p-6 rounded-xl">
+				<div
+					class="modal-box max-w-md bg-base-100 border border-base-200 shadow-2xl p-6 rounded-xl"
+				>
 					<h3 class="text-xl font-bold text-base-content flex items-center gap-2">
-						<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 text-primary">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke-width="1.5"
+							stroke="currentColor"
+							class="size-6 text-primary"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+							/>
 						</svg>
 						Exportar {selectedProjectIds.length} Projetos
 					</h3>
@@ -520,7 +661,9 @@
 						>
 							<div class="flex-1">
 								<span class="font-semibold block text-sm">Arquivo JSON Único</span>
-								<span class="text-xs text-base-content/60 font-normal mt-0.5 block">Um único arquivo contendo a lista com todos os projetos.</span>
+								<span class="text-xs text-base-content/60 font-normal mt-0.5 block"
+									>Um único arquivo contendo a lista com todos os projetos.</span
+								>
 							</div>
 						</button>
 
@@ -531,16 +674,64 @@
 						>
 							<div class="flex-1">
 								<span class="font-semibold block text-sm">Arquivo ZIP (Múltiplos JSONs)</span>
-								<span class="text-xs text-base-content/60 font-normal mt-0.5 block">Um arquivo compactado contendo cada projeto em seu próprio arquivo JSON.</span>
+								<span class="text-xs text-base-content/60 font-normal mt-0.5 block"
+									>Um arquivo compactado contendo cada projeto em seu próprio arquivo JSON.</span
+								>
 							</div>
 						</button>
 					</div>
 
 					<div class="modal-action mt-6">
-						<button type="button" class="btn btn-ghost" onclick={() => (showExportModal = false)}>Cancelar</button>
+						<button type="button" class="btn btn-ghost" onclick={() => (showExportModal = false)}
+							>Cancelar</button
+						>
 					</div>
 				</div>
-				<button type="button" class="modal-backdrop bg-black/40 cursor-default border-0 outline-none" onclick={() => (showExportModal = false)} aria-label="Fechar modal"></button>
+				<button
+					type="button"
+					class="modal-backdrop bg-black/40 cursor-default border-0 outline-none"
+					onclick={() => (showExportModal = false)}
+					aria-label="Fechar modal"
+				></button>
+			</div>
+		{/if}
+
+		<!-- Modal de Reprodução Focada (DialoguePlayer) -->
+		{#if playingProject}
+			<div class="modal modal-open z-50">
+				<div
+					class="modal-box max-w-2xl bg-base-100 border border-base-200 shadow-2xl p-0 rounded-xl overflow-hidden flex flex-col h-[520px] animate-in zoom-in-95 duration-200"
+				>
+					<!-- Header do Modal -->
+					<div
+						class="px-5 py-4 bg-base-200/50 flex items-center justify-between border-b border-base-200 shrink-0"
+					>
+						<div>
+							<h3 class="text-xs font-bold tracking-wider text-base-content/60 uppercase">
+								Emulador de Diálogo
+							</h3>
+							<p class="text-base font-bold text-base-content mt-0.5">
+								Reproduzindo: {playingProject.name}
+							</p>
+						</div>
+						<button
+							type="button"
+							class="btn btn-circle btn-ghost btn-sm text-base-content/75 hover:bg-base-200"
+							onclick={() => (playingProject = null)}>✕</button
+						>
+					</div>
+
+					<!-- Corpo do Modal (DialoguePlayer) -->
+					<div class="flex-1 min-h-0 flex flex-col bg-base-100">
+						<DialoguePlayer nodes={playingProject.nodes} />
+					</div>
+				</div>
+				<button
+					type="button"
+					class="modal-backdrop bg-black/60 cursor-default border-0 outline-none"
+					onclick={() => (playingProject = null)}
+					aria-label="Fechar player"
+				></button>
 			</div>
 		{/if}
 
@@ -549,3 +740,20 @@
 	</div>
 {/if}
 
+<style>
+	/* Scrollbar customizada e fina para a lista de cards */
+	.custom-scrollbar::-webkit-scrollbar {
+		width: 6px;
+	}
+	.custom-scrollbar::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb {
+		background-color: var(--color-base-content, rgba(166, 173, 187, 0.25));
+		border-radius: 9999px;
+		transition: background-color 0.2s;
+	}
+	.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+		background-color: var(--color-primary, #641ae6);
+	}
+</style>
