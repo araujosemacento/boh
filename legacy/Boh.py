@@ -368,15 +368,20 @@ def arrow_colorize(text, colorize_arrows=False):
         return "".join(colorize(char) for char in text)
 
 
-def talk(input=" ", expression="idle", amount=1.0, static="", colorize_arrows=False):
+seen_talks = []
+current_talk_index = -1
+
+
+def talk(input=" ", expression="idle", amount=.675, static="", colorize_arrows=False):
     """Exibe texto animado com expressões e efeitos sonoros a cada caractere alfanumérico."""
-    if input == " ":
-        remaining = list(input)
-        displayed = []
+    global seen_talks, current_talk_index
+
+    current_args = (input, expression, amount, static, colorize_arrows)
+    if not seen_talks or seen_talks[-1] != current_args:
+        seen_talks.append(current_args)
+        current_talk_index = len(seen_talks) - 1
     else:
-        parsed_chars = parse_formatted_text(input)
-        remaining = parsed_chars.copy()
-        displayed = []
+        current_talk_index = len(seen_talks) - 1
 
     expressions = {
         "idle": [
@@ -394,54 +399,135 @@ def talk(input=" ", expression="idle", amount=1.0, static="", colorize_arrows=Fa
         "thinking": ["[ ─ ´ ─]", "[ ─ » ─]"],
         "open mouth": ["[ ▀ ß ▀]", "[ ▀ █ ▀]"],
         "annoyed": ["[ ▀ ı ▀]", "[ ▀ ^ ▀]"],
-        "looking down": ["[ ▄ . ▄]", "[ ▄ _ ▄]", "[ ▄ ₒ ▄]", "[ ▄ ‗ ▄]"],
+        "looking down": ["[ ▄ . ▄]", "[ ▄ _ ▄]", "[ ▄ ₒ ▄]", "[ ▄ ₗ ▄]", "[ ▄ ‗ ▄]"],
     }
+
+    def render_frame(displayed_chars):
+        expr_list = expressions.get(expression, expressions["idle"])
+        current_expr = expr_list[
+            len(displayed_chars) // (len(expr_list) // 2) % len(expr_list)
+        ]
+
+        displayed_text = ""
+        if displayed_chars:
+            if len(displayed_chars) == 1 and displayed_chars[0] == " ":
+                displayed_text = arrow_colorize(static, colorize_arrows)
+            else:
+                displayed_text = "".join(arrow_colorize(displayed_chars, colorize_arrows))
+        else:
+            displayed_text = arrow_colorize(static, colorize_arrows)
+
+        static_text = arrow_colorize(static, colorize_arrows) if displayed_chars and displayed_chars[0] != " " else ""
+
+        full_output = f"\n   {current_expr}  ──┤ {displayed_text} │  {static_text}"
+        lines = full_output.split("\n")
+        
+        home_seq = term.home or "\033[1;1H"
+        clear_eol_seq = term.clear_eol or "\033[K"
+        clear_eos_seq = term.clear_eos or "\033[J"
+        
+        formatted_lines = [line + clear_eol_seq for line in lines]
+        print(home_seq + "\n".join(formatted_lines) + clear_eos_seq, end="", flush=True)
 
     print("\033[1;1H\033[0J", end="")
 
+    if input == " ":
+        remaining = list(input)
+    else:
+        remaining = parse_formatted_text(input)
+
+    displayed = []
+    skip_animation = False
+    typing_delay = 0.05  # Aumentado de 0.03 para 0.05 para tornar a digitação um tico mais lenta
+
     while remaining:
-        sleep(0.03)
+        if not skip_animation:
+            sleep(typing_delay)
 
         with term.cbreak():
-            term_input = term.inkey(timeout=0.01)
+            term_input = term.inkey(timeout=0.001)
             if term_input == " ":
                 term_input = term.inkey(timeout=None)
-            term_input = None
+            if term_input and term_input.name == "KEY_RIGHT":
+                skip_animation = True
+            if term_input and term_input.name == "KEY_LEFT":
+                break
 
-        displayed.append(remaining.pop(0))
+        if skip_animation:
+            displayed.extend(remaining)
+            remaining = []
+        else:
+            displayed.append(remaining.pop(0))
 
-        # Verificamos se o caractere atual é alfanumérico para reproduzir o som
         current_char = displayed[-1]
-        # Remove códigos ANSI para verificar se é alfanumérico
         clean_char = sub(r"\033\[[0-9;]*m", "", current_char)
 
-        # Reproduz o som apenas se for um caractere alfanumérico
         if clean_char and any(c.isalnum() for c in clean_char):
             play_typing_sound(static=True if static else False, input=clean_char)
         elif static and input == " ":
             play_typing_sound()
 
-        expr_list = expressions.get(expression, expressions["idle"])
-        current_expr = expr_list[
-            len(displayed) // (len(expr_list) // 2) % len(expr_list)
-        ]
+        render_frame(displayed)
 
-        print("\033[1;1H\033[0J", end="\n   ")
+    total_wait_time = amount
+    start_wait = current_time()
+    enter_navigation = False
 
-        displayed_text = ""
-        if input != " ":
-            displayed_text = "".join(arrow_colorize(displayed, colorize_arrows))
-        else:
-            displayed_text = arrow_colorize(static, colorize_arrows)
+    if remaining:  # Interrompido por KEY_LEFT
+        enter_navigation = True
+        current_talk_index = len(seen_talks) - 2
+        if current_talk_index < 0:
+            current_talk_index = 0
 
-        static_text = arrow_colorize(static, colorize_arrows) if input != " " else ""
+    while (current_time() - start_wait < total_wait_time) or enter_navigation:
+        with term.cbreak():
+            timeout = None if enter_navigation else 0.05
+            term_input = term.inkey(timeout=timeout)
+            
+            if term_input == " ":
+                term_input = term.inkey(timeout=None)
+                
+            if term_input and term_input.name == "KEY_LEFT":
+                enter_navigation = True
+                if current_talk_index > 0:
+                    current_talk_index -= 1
+            elif term_input and term_input.name == "KEY_RIGHT":
+                if enter_navigation:
+                    if current_talk_index < len(seen_talks) - 1:
+                        current_talk_index += 1
+                    else:
+                        enter_navigation = False
+                        current_talk_index = len(seen_talks) - 1
+                        render_frame(displayed)
+                        break
+                else:
+                    break
 
-        print(
-            f"{current_expr}  ──┤ {displayed_text} │  ",
-            end="",
-            flush=True,
-        )
-        print(f"{static_text}", end="", flush=True)
+        if enter_navigation:
+            hist_input, hist_expr, hist_amount, hist_static, hist_color = seen_talks[current_talk_index]
+            hist_displayed = [] if hist_input == " " else parse_formatted_text(hist_input)
+            
+            expr_list = expressions.get(hist_expr, expressions["idle"])
+            current_expr = expr_list[
+                len(hist_displayed) // (len(expr_list) // 2) % len(expr_list)
+            ]
+            displayed_text = ""
+            if hist_displayed:
+                if len(hist_displayed) == 1 and hist_displayed[0] == " ":
+                    displayed_text = arrow_colorize(hist_static, hist_color)
+                else:
+                    displayed_text = "".join(arrow_colorize(hist_displayed, hist_color))
+            else:
+                displayed_text = arrow_colorize(hist_static, hist_color)
+            static_text = arrow_colorize(hist_static, hist_color) if hist_displayed and hist_displayed[0] != " " else ""
+            
+            full_output = f"\n   {current_expr}  ──┤ {displayed_text} │  {static_text}"
+            lines = full_output.split("\n")
+            home_seq = term.home or "\033[1;1H"
+            clear_eol_seq = term.clear_eol or "\033[K"
+            clear_eos_seq = term.clear_eos or "\033[J"
+            formatted_lines = [line + clear_eol_seq for line in lines]
+            print(home_seq + "\n".join(formatted_lines) + clear_eos_seq, end="", flush=True)
 
     sleep(amount)
 
