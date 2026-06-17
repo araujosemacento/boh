@@ -23,20 +23,19 @@
 			'[ ▀ ■ ▀]',
 			'[ ▀ ─ ▀]',
 			'[ ▀ ~ ▀]',
-			'[ ▀ ▄ ▀]',
 			'[ ▀ ¬ ▀]',
 			'[ ▀ · ▀]',
 			'[ ▀ _ ▀]'
 		],
-		pokerface: ['[ ▀ ‗ ▀]', '[ ▀ ¯ ▀]', '[ ▀ ¡ ▀]'],
-		thinking: ['[ ─ ´ ─]', '[ ─ » ─]'],
-		'open mouth': ['[ ▀ ß ▀]', '[ ▀ █ ▀]'],
-		annoyed: ['[ ▀ ı ▀]', '[ ▀ ^ ▀]'],
-		'looking down': ['[ ▄ . ▄]', '[ ▄ _ ▄]', '[ ▄ ₒ ▄]', '[ ▄ ₗ ▄]']
+		pokerface: ['[ ▀ ‗ ▀]', '[ ▀ ─ ▀]', '[ ▀ ¯ ▀]', '[ ▀ ¡ ▀]'],
+		thinking: ['[ ─ ´ ─]', '[ ─ » ─]', '[ ─ ^ ─]', '[ ─ ~ ─]', '[ ─ ¬ ─]', '[ ─ · ─]'],
+		'open mouth': ['[ ▀ o ▀]', '[ ▀ ß ▀]', '[ ▀ █ ▀]', '[ ▀ ° ▀]', '[ ▀ ■ ▀]'],
+		annoyed: ['[ ▀ ı ▀]', '[ ▀ ^ ▀]', '[ ▀ ~ ▀]', '[ ▀ ¬ ▀]', '[ ▀ ß ▀]',],
+		'looking down': ['[ ▄ . ▄]', '[ ▄ _ ▄]', '[ ▄ ₒ ▄]', '[ ▄ ₗ ▄]', '[ ▄ ‗ ▄]'],
 	};
 
 	let isPlaying = $state(false);
-	let currentFace = $state('[ ▀ ° ▀]');
+	let currentFace = $state('[ ▀ ─ ▀]');
 	let currentBubbleText = $state('');
 	let terminalHistory = $state<
 		Array<{ type: 'dialogue' | 'system' | 'error'; face?: string; text: string }>
