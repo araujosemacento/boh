@@ -36,8 +36,17 @@
 			? 'border-primary bg-primary/5 ring-2 ring-primary/30 shadow-md'
 			: 'border-base-200 bg-base-100 hover:border-base-300 hover:shadow-lg'}"
 >
-	<!-- Coluna Esquerda: Informações principais (Não reage a cliques comuns de tipografia) -->
-	<div class="flex-1 p-4 flex flex-col justify-between overflow-hidden">
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		onclick={(e) => {
+			if (e.ctrlKey || e.metaKey || e.shiftKey) {
+				e.stopPropagation();
+				onSelect?.(e);
+			}
+		}}
+		class="flex-1 p-4 flex flex-col justify-between overflow-hidden"
+	>
 		<!-- Linha do Título e Lixeira -->
 		<div class="flex items-center justify-between gap-2 min-w-0">
 			<div class="flex items-center gap-2.5 min-w-0 flex-1">

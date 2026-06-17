@@ -228,11 +228,22 @@
 		activeProject = project;
 	}
 
+	// Trata cliques de seleção do card (checkbox ou cliques com modificadores)
+	function handleCardSelectClick(project: Project, e: MouseEvent) {
+		if (e.shiftKey || e.ctrlKey || e.metaKey) {
+			// Cliques com modificadores (Shift, Ctrl, Cmd) usam a lógica avançada
+			handleCardClick(project, e);
+		} else {
+			// Clique normal (por exemplo, clicando diretamente na checkbox) apenas altera a seleção
+			toggleSelect(project.id);
+		}
+	}
+
 	// Lógica de início de arraste do mouse
 	function handleMouseDown(e: MouseEvent) {
 		if (e.button !== 0) return; // Apenas botão esquerdo
 
-		// Ignora se o clique foi em botões, inputs, modais ou container de configurações
+		// Ignora se o clique foi em botões, inputs, modais, configurações ou sobre o próprio card
 		const target = e.target as HTMLElement;
 		if (
 			target.closest('button') ||
@@ -240,7 +251,9 @@
 			target.closest('select') ||
 			target.closest('a') ||
 			target.closest('.modal-box') ||
-			target.closest('.settings-container')
+			target.closest('.settings-container') ||
+			target.closest('.project-card-btn') ||
+			target.closest('article')
 		) {
 			return;
 		}
@@ -509,7 +522,7 @@
 									{project}
 									selected={selectedProjectIds.includes(project.id)}
 									isDragging={draggedProjectId === project.id}
-									onSelect={(e) => handleCardClick(project, e)}
+									onSelect={(e) => handleCardSelectClick(project, e)}
 									onPlay={() => (playingProject = project)}
 									onEdit={() => (activeProject = project)}
 									onDelete={() => handleSingleDelete(project)}
