@@ -1,0 +1,97 @@
+[
+  {
+    "id": "demo-intro",
+    "name": "Boh: Introdução",
+    "description": "Demonstração básica das capacidades de diálogo, expressões e efeito sonoro de digitação do emulador Boh.",
+    "tag": "Demonstração",
+    "nodes": {
+      "start": {
+        "id": "start",
+        "type": "start",
+        "x": 80,
+        "y": 180,
+        "expression": "idle",
+        "text": "",
+        "nextId": "node-1"
+      },
+      "node-1": {
+        "id": "node-1",
+        "type": "boh",
+        "x": 283,
+        "y": 158,
+        "expression": "idle",
+        "text": "Olá! Eu sou o Boh!",
+        "nextId": "node-2"
+      },
+      "node-2": {
+        "id": "node-2",
+        "type": "boh",
+        "x": 640,
+        "y": 157,
+        "expression": "pokerface",
+        "text": "Sabe? Tipo...",
+        "nextId": "node-3"
+      },
+      "node-3": {
+        "id": "node-3",
+        "type": "boh",
+        "x": 981,
+        "y": 158,
+        "expression": "thinking",
+        "text": "RÔH-",
+        "nextId": "node-1781676629930"
+      },
+      "node-1781676629930": {
+        "id": "node-1781676629930",
+        "type": "boh",
+        "x": 1313.8856277622754,
+        "y": 157.98319963816192,
+        "expression": "thinking",
+        "text": "BÔH!",
+        "nextId": "node-1781676655435"
+      },
+      "node-1781676655435": {
+        "id": "node-1781676655435",
+        "type": "boh",
+        "x": 1669.7006357225976,
+        "y": 157.70308637793488,
+        "expression": "open mouth",
+        "text": "HaHAahHaHAahHaHAahHaHAah"
+      }
+    }
+  },
+  {
+    "id": "demo-features",
+    "name": "Boh: Recursos",
+    "description": "Demonstração avançada mostrando diferentes expressões faciais e o alinhamento da caixa de diálogo.",
+    "tag": "Recursos",
+    "nodes": {
+      "start": {
+        "id": "start",
+        "type": "start",
+        "x": 80,
+        "y": 180,
+        "expression": "idle",
+        "text": "",
+        "nextId": "node-1"
+      },
+      "node-1": {
+        "id": "node-1",
+        "type": "boh",
+        "x": 304,
+        "y": 169,
+        "expression": "idle",
+        "text": "Oi! Esse projeto não tá implementado ainda! Volta mais tarde...",
+        "nextId": "node-1781676777905"
+      },
+      "node-1781676777905": {
+        "id": "node-1781676777905",
+        "type": "boh",
+        "x": 641.7311905047106,
+        "y": 167.97461163738112,
+        "expression": "thinking",
+        "text": "ZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZzZz"
+      }
+    }
+  }
+]
