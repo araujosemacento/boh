@@ -595,8 +595,8 @@ def main():
         talk("Oi, tudo bem?")
         talk("Muito obrigado por executar o meu script")
         talk(f"Eu me chamo {term.green}{term.bold}BOH!")
-        talk("He He", amount=0.75)
-        talk("Sabe...", amount=0.75)
+        talk("He He", amount=0.5)
+        talk("Sabe...", amount=0.5)
         talk("Tipo,")
         talk(static=f"Tipo, {term.bold}ROH{term.normal}")
         talk(
@@ -604,7 +604,7 @@ def main():
         )
 
         for i in range(10):
-            talk(static=f"{"HahA" * i}", expression="open mouth", amount=0.05)
+            talk(static=f"{"HahA" * i}", expression="open mouth", amount=0.025)
 
         sleep(1)
         talk("Ai ai, sou meio comédia às vezes, sabe?")
@@ -631,7 +631,7 @@ def main():
                 )
 
         talk(
-            "Olha olha olha, na verdade, eu não tenho muito tempo...", "pokerface", 1.5
+            "Olha olha olha, na verdade, eu não tenho muito tempo...", "pokerface", 2
         )
         talk("Me desculpa! Você parece ser uma pessoa muito legal, mas...")
         talk("A pessoa que me mandou aqui, queria falar sobre ↓ isso ↓", amount=0.2)
@@ -731,7 +731,7 @@ def main():
         talk(
             "Fazer isso, né?",
             static=colored_list,
-            amount=1.5,
+            amount=2.5,
         )
 
         # Explicações sobre inversão de lista
@@ -743,7 +743,7 @@ def main():
         ]
 
         for explanation in swap_explanations:
-            talk(explanation, static=swapped_edges)
+            talk(explanation, static=swapped_edges, amount=2.0)
 
         # Visualizações da lista após operações
         list_with_two_heads = f"\n\n\n\n                        None × ‹{term.blue}[H]{term.normal}» ‹[]» ‹[]» ... ‹[]» ‹[]» ‹{term.blue}[H]{term.normal}» × None"
@@ -769,7 +769,7 @@ def main():
         # Mostrando as explicações
         for i, explanation in enumerate(assignment_explanations):
             static_display = list_with_two_heads
-            amount = 1.5 if i == 3 or i == 7 else 1.0
+            amount = 2.5 if i == 3 or i == 7 else 1.5
             talk(explanation, static=static_display, amount=amount)
 
         # Introduzindo o auxiliar
@@ -853,7 +853,7 @@ def main():
 /   _)(  )(_
    `---''---`
 """
-            talk(text, static=aux_with_list)
+            talk(text, static=aux_with_list, amount=1.5)
 
         # Despedindo-se do AUX
         talk(
@@ -884,7 +884,7 @@ def main():
         ]
 
         for explanation in pointer_explanations:
-            talk(explanation, static=swapped_edges)
+            talk(explanation, static=swapped_edges, amount=2.0)
 
         # Verificando entendimento
         talk(
@@ -919,7 +919,7 @@ def main():
                 ]
 
                 for explanation in additional_explanations:
-                    talk(explanation, static=swapped_edges)
+                    talk(explanation, static=swapped_edges, amount=2.5)
 
                 # Verificando novamente o entendimento
                 confirmation = False
@@ -990,7 +990,7 @@ def main():
         ]
 
         for explanation in arrow_explanations:
-            talk(explanation, static=swapped_edges)
+            talk(explanation, static=swapped_edges, amount=2.0)
 
         # Mostrando setas coloridas
         talk("Que tal...", expression="thinking", static=swapped_edges, amount=1.5)
@@ -1013,7 +1013,7 @@ def main():
         ]
 
         for i, explanation in enumerate(colored_arrow_explanations):
-            amount = 1.5 if i == 6 else 1.0
+            amount = 2.5 if i == 6 else 2.0
             talk(explanation, static=swapped_edges, colorize_arrows=True, amount=amount)
 
         # Explicando a necessidade de inverter as setas
@@ -1029,7 +1029,7 @@ def main():
         ]
 
         for i, explanation in enumerate(inversion_explanations):
-            amount = 1.5 if i == 3 else 1.0
+            amount = 2.5 if i == 3 else 2.0
             talk(explanation, static=swapped_edges, colorize_arrows=True, amount=amount)
 
         # Verificando se pode continuar
@@ -1094,7 +1094,7 @@ def main():
         ]
 
         for explanation in direction_explanations:
-            talk(explanation, static=swapped_edges, colorize_arrows=True)
+            talk(explanation, static=swapped_edges, colorize_arrows=True, amount=1.5)
 
         # Lista com Tail destacada
         list_with_highlighted_tail = f"\n\n\n\n                        None × ‹{term.red}[T]{term.normal}» ‹[]» ‹[]» ... ‹[]» ‹[]» ‹[H]» × None"
@@ -1116,6 +1116,7 @@ def main():
                 static=list_with_highlighted_tail,
                 colorize_arrows=True,
                 expression=expression,
+                amount=2.5,
             )
 
         # Sequência com AUX manipulando as setas
@@ -1179,7 +1180,7 @@ def main():
         ]
 
         for i, (text, ascii_art) in enumerate(aux_sequences):
-            amount = 1.5 if i == 3 else 1.0
+            amount = 2.5 if i == 3 else 1.5
             talk(text, static=ascii_art, colorize_arrows=True, amount=amount)
 
         # Explicação sobre inversão de direções
@@ -1243,7 +1244,7 @@ def main():
         ]
 
         for i, (text, ascii_art) in enumerate(direction_questions):
-            amount = 1.5 if i == 3 else 1.0
+            amount = 2.5 if i == 3 else 1.5
             talk(text, static=ascii_art, colorize_arrows=True, amount=amount)
 
         # Explicações sobre percorrer a lista invertida
@@ -1293,7 +1294,7 @@ def main():
         ]
 
         for text, ascii_art in traversal_explanations:
-            talk(text, static=ascii_art, colorize_arrows=True)
+            talk(text, static=ascii_art, colorize_arrows=True, amount=2.5)
 
         # Animação de percorrer e inverter cada elemento
         node_traversal = [
@@ -1413,7 +1414,7 @@ def main():
 
         for text, ascii_art in node_traversal:
             talk(
-                text, expression="looking down", static=ascii_art, colorize_arrows=True
+                text, expression="looking down", static=ascii_art, colorize_arrows=True, amount=2.5
             )
 
         # Conclusão
