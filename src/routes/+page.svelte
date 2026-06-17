@@ -6,9 +6,10 @@
 	import type { Project } from '$lib/types';
 	import demoProjects from '$lib/assets/demos.json';
 	import JSZip from 'jszip';
+	import BohMascot from '$lib/components/BohMascot.svelte';
 
 	// 1. Estado de Projetos Carregado do LocalStorage ou Inicializado com Padrões
-	let projects = $state<Project[]>(demoProjects as Project[]);
+	let projects = $state<Project[]>(demoProjects as unknown as Project[]);
 
 	// Carrega dados persistidos ao montar o componente no navegador
 	$effect(() => {
@@ -369,7 +370,7 @@
 		aria-label="Dashboard de Projetos"
 	>
 		<section
-			class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 flex-1"
+			class="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 lg:pl-28 lg:pr-8 lg:py-8 flex-1 pb-28"
 		>
 			<header
 				class="flex flex-col gap-5 rounded-lg border border-base-200 bg-base-100 p-5 shadow-sm sm:p-6 lg:flex-row lg:items-center lg:justify-between lg:p-8"
@@ -544,6 +545,7 @@
 		{/if}
 
 		<Settings />
+		<BohMascot hasSelection={selectedProjectIds.length > 0} />
 	</div>
 {/if}
 
