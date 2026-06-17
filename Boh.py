@@ -368,15 +368,20 @@ def arrow_colorize(text, colorize_arrows=False):
         return "".join(colorize(char) for char in text)
 
 
-def talk(input=" ", expression="idle", amount=1.0, static="", colorize_arrows=False):
+seen_talks = []
+current_talk_index = -1
+
+
+def talk(input=" ", expression="idle", amount=1.25, static="", colorize_arrows=False):
     """Exibe texto animado com expressões e efeitos sonoros a cada caractere alfanumérico."""
-    if input == " ":
-        remaining = list(input)
-        displayed = []
+    global seen_talks, current_talk_index
+
+    current_args = (input, expression, amount, static, colorize_arrows)
+    if not seen_talks or seen_talks[-1] != current_args:
+        seen_talks.append(current_args)
+        current_talk_index = len(seen_talks) - 1
     else:
-        parsed_chars = parse_formatted_text(input)
-        remaining = parsed_chars.copy()
-        displayed = []
+        current_talk_index = len(seen_talks) - 1
 
     expressions = {
         "idle": [
@@ -394,56 +399,134 @@ def talk(input=" ", expression="idle", amount=1.0, static="", colorize_arrows=Fa
         "thinking": ["[ ─ ´ ─]", "[ ─ » ─]"],
         "open mouth": ["[ ▀ ß ▀]", "[ ▀ █ ▀]"],
         "annoyed": ["[ ▀ ı ▀]", "[ ▀ ^ ▀]"],
-        "looking down": ["[ ▄ . ▄]", "[ ▄ _ ▄]", "[ ▄ ₒ ▄]", "[ ▄ ‗ ▄]"],
+        "looking down": ["[ ▄ . ▄]", "[ ▄ _ ▄]", "[ ▄ ₒ ▄]", "[ ▄ ₗ ▄]", "[ ▄ ‗ ▄]"],
     }
+
+    def render_frame_for_speech(displayed_chars, expr, static_text, color_arrows):
+        expr_list = expressions.get(expr, expressions["idle"])
+        current_expr = expr_list[
+            len(displayed_chars) // (len(expr_list) // 2) % len(expr_list)
+        ]
+
+        displayed_text = ""
+        if displayed_chars:
+            if len(displayed_chars) == 1 and displayed_chars[0] == " ":
+                displayed_text = arrow_colorize(static_text, color_arrows)
+            else:
+                displayed_text = "".join(arrow_colorize(displayed_chars, color_arrows))
+        else:
+            displayed_text = arrow_colorize(static_text, color_arrows)
+
+        static_disp = arrow_colorize(static_text, color_arrows) if displayed_chars and displayed_chars[0] != " " else ""
+
+        full_output = f"\n   {current_expr}  ──┤ {displayed_text} │  {static_disp}"
+        lines = full_output.split("\n")
+        
+        home_seq = term.home or "\033[1;1H"
+        clear_eol_seq = term.clear_eol or "\033[K"
+        clear_eos_seq = term.clear_eos or "\033[J"
+        
+        formatted_lines = [line + clear_eol_seq for line in lines]
+        print(home_seq + "\n".join(formatted_lines) + clear_eos_seq, end="", flush=True)
+
+    def run_navigation_mode(start_nav_idx):
+        nav_idx = start_nav_idx
+        
+        hist_input, hist_expr, hist_amount, hist_static, hist_color = seen_talks[nav_idx]
+        hist_displayed = [] if hist_input == " " else parse_formatted_text(hist_input)
+        render_frame_for_speech(hist_displayed, hist_expr, hist_static, hist_color)
+        
+        while True:
+            with term.cbreak():
+                term_input = term.inkey(timeout=None)
+                
+                if term_input == " ":
+                    return f"jump:{nav_idx}"
+                    
+                if term_input and term_input.name == "KEY_LEFT":
+                    if nav_idx > 0:
+                        nav_idx -= 1
+                elif term_input and term_input.name == "KEY_RIGHT":
+                    if nav_idx < len(seen_talks) - 1:
+                        nav_idx += 1
+                    else:
+                        return f"jump:{len(seen_talks) - 1}"
+            
+            hist_input, hist_expr, hist_amount, hist_static, hist_color = seen_talks[nav_idx]
+            hist_displayed = [] if hist_input == " " else parse_formatted_text(hist_input)
+            render_frame_for_speech(hist_displayed, hist_expr, hist_static, hist_color)
+
+    def play_speech_at_index(idx):
+        global current_talk_index
+        current_talk_index = idx
+        
+        hist_input, hist_expr, hist_amount, hist_static, hist_color = seen_talks[idx]
+        
+        if hist_input == " ":
+            remaining = list(hist_input)
+        else:
+            remaining = parse_formatted_text(hist_input)
+            
+        displayed = []
+        skip_animation = False
+        typing_delay = 0.042
+        
+        while remaining:
+            if not skip_animation:
+                sleep(typing_delay)
+                
+            with term.cbreak():
+                term_input = term.inkey(timeout=0.001)
+                if term_input == " ":
+                    term_input = term.inkey(timeout=None)
+                if term_input and term_input.name == "KEY_RIGHT":
+                    skip_animation = True
+                if term_input and term_input.name == "KEY_LEFT":
+                    prev_idx = idx - 1 if idx > 0 else 0
+                    return run_navigation_mode(prev_idx)
+            
+            if skip_animation:
+                displayed.extend(remaining)
+                remaining = []
+            else:
+                displayed.append(remaining.pop(0))
+                
+            current_char = displayed[-1]
+            clean_char = sub(r"\033\[[0-9;]*m", "", current_char)
+            
+            if clean_char and any(c.isalnum() for c in clean_char):
+                play_typing_sound(static=True if hist_static else False, input=clean_char)
+            elif hist_static and hist_input == " ":
+                play_typing_sound()
+                
+            render_frame_for_speech(displayed, hist_expr, hist_static, hist_color)
+            
+        total_wait_time = hist_amount
+        start_wait = current_time()
+        
+        while current_time() - start_wait < total_wait_time:
+            with term.cbreak():
+                term_input = term.inkey(timeout=0.05)
+                if term_input == " ":
+                    term_input = term.inkey(timeout=None)
+                if term_input and term_input.name == "KEY_LEFT":
+                    prev_idx = idx - 1 if idx > 0 else 0
+                    return run_navigation_mode(prev_idx)
+                elif term_input and term_input.name == "KEY_RIGHT":
+                    break
+                    
+        return "next"
 
     print("\033[1;1H\033[0J", end="")
 
-    while remaining:
-        sleep(0.03)
-
-        with term.cbreak():
-            term_input = term.inkey(timeout=0.01)
-            if term_input == " ":
-                term_input = term.inkey(timeout=None)
-            term_input = None
-
-        displayed.append(remaining.pop(0))
-
-        # Verificamos se o caractere atual é alfanumérico para reproduzir o som
-        current_char = displayed[-1]
-        # Remove códigos ANSI para verificar se é alfanumérico
-        clean_char = sub(r"\033\[[0-9;]*m", "", current_char)
-
-        # Reproduz o som apenas se for um caractere alfanumérico
-        if clean_char and any(c.isalnum() for c in clean_char):
-            play_typing_sound(static=True if static else False, input=clean_char)
-        elif static and input == " ":
-            play_typing_sound()
-
-        expr_list = expressions.get(expression, expressions["idle"])
-        current_expr = expr_list[
-            len(displayed) // (len(expr_list) // 2) % len(expr_list)
-        ]
-
-        print("\033[1;1H\033[0J", end="\n   ")
-
-        displayed_text = ""
-        if input != " ":
-            displayed_text = "".join(arrow_colorize(displayed, colorize_arrows))
-        else:
-            displayed_text = arrow_colorize(static, colorize_arrows)
-
-        static_text = arrow_colorize(static, colorize_arrows) if input != " " else ""
-
-        print(
-            f"{current_expr}  ──┤ {displayed_text} │  ",
-            end="",
-            flush=True,
-        )
-        print(f"{static_text}", end="", flush=True)
-
-    sleep(amount)
+    play_idx = len(seen_talks) - 1
+    while play_idx < len(seen_talks):
+        status = play_speech_at_index(play_idx)
+        if status == "next":
+            play_idx += 1
+        elif status.startswith("jump:"):
+            target = int(status.split(":")[1])
+            play_idx = target
 
 
 def wait_for_response(
