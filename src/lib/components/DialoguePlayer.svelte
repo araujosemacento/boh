@@ -6,6 +6,7 @@
 	let {
 		nodes,
 		terminalWidth = $bindable(480),
+		// eslint-disable-next-line no-useless-assignment
 		activePlayNodeId = $bindable(null),
 		selectedNodeId = null
 	}: {
@@ -40,7 +41,6 @@
 	let terminalHistory = $state<
 		Array<{ type: 'dialogue' | 'system' | 'error'; face?: string; text: string }>
 	>([]);
-	let charIndex = $state(0);
 
 	const choice = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 	const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -55,7 +55,9 @@
 		try {
 			const preparedChar = prepareWithSegments('A', font);
 			charWidth = measureNaturalWidth(preparedChar) || 8;
-		} catch (e) {}
+		} catch {
+			// ignore
+		}
 
 		const prefixChars = 14;
 		const suffixChars = 2;
@@ -74,7 +76,9 @@
 		try {
 			const preparedChar = prepareWithSegments('A', font);
 			charWidth = measureNaturalWidth(preparedChar) || 8;
-		} catch (e) {}
+		} catch {
+			// ignore
+		}
 
 		const prefixChars = 14;
 		const suffixChars = 2;
@@ -105,7 +109,9 @@
 			osc.start();
 			osc.stop(ctx.currentTime + 0.04);
 			setTimeout(() => ctx.close(), 100);
-		} catch (_) {}
+		} catch {
+			// ignore
+		}
 	};
 
 	const startPlaying = async () => {
@@ -137,12 +143,10 @@
 			const node: DialogueNode = nodes[targetNodeId];
 			const exprList = bohExpressions[node.expression] ?? bohExpressions.idle;
 			currentBubbleText = '';
-			charIndex = 0;
 
 			// Reproduzir texto do nó atual
 			for (let i = 0; i < node.text.length; i++) {
 				if (!isPlaying) break;
-				charIndex = i;
 				currentFace =
 					exprList[Math.floor(i / Math.max(1, Math.floor(exprList.length / 2))) % exprList.length];
 				currentBubbleText += node.text[i];
@@ -240,13 +244,13 @@
 						{@const paddedLine = line.padEnd(maxChars, ' ')}
 						<div class="flex items-baseline gap-0 py-0.5 text-[#f8fafc] whitespace-pre">
 							{#if i === 0}
-								<span class="text-[#4ade80] font-semibold shrink-0">{entry.face}{'  ──┤ '}</span>
+								<span class="text-[#4ade80] font-semibold shrink-0">{entry.face} ──┤ </span>
 								<span class="text-[#f8fafc]">{paddedLine}</span>
-								<span class="text-[#4ade80] font-semibold">{' │'}</span>
+								<span class="text-[#4ade80] font-semibold"> │</span>
 							{:else}
-								<span class="text-[#4ade80] font-semibold shrink-0">{'            │ '}</span>
+								<span class="text-[#4ade80] font-semibold shrink-0"> │ </span>
 								<span class="text-[#f8fafc]">{paddedLine}</span>
-								<span class="text-[#4ade80] font-semibold">{' │'}</span>
+								<span class="text-[#4ade80] font-semibold"> │</span>
 							{/if}
 						</div>
 					{/each}
@@ -261,21 +265,21 @@
 					{@const paddedLine = line.padEnd(maxChars, ' ')}
 					<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
 						{#if i === 0}
-							<span class="text-[#4ade80] font-semibold shrink-0">{currentFace}{'  ──┤ '}</span>
+							<span class="text-[#4ade80] font-semibold shrink-0">{currentFace} ──┤ </span>
 							<span class="text-[#f8fafc]">{paddedLine}</span>
-							<span class="text-[#4ade80] font-semibold blink-cursor">{' │'}</span>
+							<span class="text-[#4ade80] font-semibold blink-cursor"> │</span>
 						{:else}
-							<span class="text-[#4ade80] font-semibold shrink-0">{'            │ '}</span>
+							<span class="text-[#4ade80] font-semibold shrink-0"> │ </span>
 							<span class="text-[#f8fafc]">{paddedLine}</span>
-							<span class="text-[#4ade80] font-semibold blink-cursor">{' │'}</span>
+							<span class="text-[#4ade80] font-semibold blink-cursor"> │</span>
 						{/if}
 					</div>
 				{/each}
 			{:else if !isPlaying && terminalHistory.length === 0}
 				<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
-					<span class="text-[#4ade80]/50 shrink-0">{currentFace}{'  ──┤'}</span>
+					<span class="text-[#4ade80]/50 shrink-0">{currentFace} ──┤</span>
 					<span class="ml-1 italic text-slate-400">Aperte Play para iniciar...</span>
-					<span class="text-[#4ade80]/50">{' │'}</span>
+					<span class="text-[#4ade80]/50"> │</span>
 				</div>
 			{/if}
 		</div>

@@ -19,7 +19,7 @@
 			if (saved) {
 				try {
 					projects = JSON.parse(saved);
-				} catch (e) {
+				} catch {
 					// Fallback silencioso
 				}
 			} else {
@@ -161,7 +161,7 @@
 		if (saved) {
 			try {
 				projects = JSON.parse(saved);
-			} catch (e) {
+			} catch {
 				// Fallback
 			}
 		}
@@ -283,6 +283,7 @@
 			if (!box) return;
 
 			const cards = gridContainer.querySelectorAll('.project-card-btn');
+			// eslint-disable-next-line svelte/prefer-svelte-reactivity
 			const newSelected = new Set<string>();
 
 			cards.forEach((card) => {

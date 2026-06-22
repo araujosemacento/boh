@@ -1,15 +1,5 @@
 <script lang="ts">
-	import {
-		ArrowLeft,
-		Save,
-		Download,
-		Upload,
-		Play,
-		Square,
-		Plus,
-		Trash2,
-		Zap
-	} from '@lucide/svelte';
+	import { ArrowLeft, Save, Download, Upload, Plus, Trash2, Zap } from '@lucide/svelte';
 	import type { Project, DialogueNode } from '../types';
 	import DialoguePlayer from './DialoguePlayer.svelte';
 
@@ -210,7 +200,7 @@
 	const saveProject = () => {
 		project.nodes = { ...nodes };
 		const savedProjects = JSON.parse(localStorage.getItem('saved-projects-v2') || '[]');
-		const idx = savedProjects.findIndex((p: any) => p.id === project.id);
+		const idx = savedProjects.findIndex((p: Project) => p.id === project.id);
 		const updated = { ...project, nodes: { ...nodes } };
 		if (idx >= 0) savedProjects[idx] = updated;
 		else savedProjects.push(updated);
