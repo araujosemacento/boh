@@ -38,7 +38,8 @@ export default defineConfig(
 		// Override or add rule settings here, such as:
 		// 'svelte/button-has-type': 'error'
 		rules: {
-			'svelte/require-each-key': ['off', true]
+			'svelte/require-each-key': ['off', true],
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	}
 );

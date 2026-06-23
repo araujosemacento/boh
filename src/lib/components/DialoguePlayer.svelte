@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { Play, Square } from '@lucide/svelte';
+	import { Play, Square, RotateCcw } from '@lucide/svelte';
 	import type { DialogueNode } from '../types';
 	import { prepareWithSegments, layoutWithLines, measureNaturalWidth } from '@chenglou/pretext';
+	import { onDestroy } from 'svelte';
 
 	let {
 		nodes,
@@ -36,14 +37,34 @@
 	};
 
 	let isPlaying = $state(false);
+	let statusState = $state<'idle' | 'playing' | 'paused' | 'finished'>('idle');
 	let currentFace = $state('[ ▀ ─ ▀]');
 	let currentBubbleText = $state('');
-	let terminalHistory = $state<
-		Array<{ type: 'dialogue' | 'system' | 'error'; face?: string; text: string }>
-	>([]);
+
+	// Histórico de navegação por teclado
+	let visitedNodeIds = $state<string[]>([]);
+	let historyIndex = $state(-1);
+
+	let systemMessage = $state<string | null>(null);
+	let errorMessage = $state<string | null>(null);
+
+	let typingInterval: ReturnType<typeof setInterval> | null = null;
+	let nextNodeTimeout: ReturnType<typeof setTimeout> | null = null;
+	let isTyping = $state(false);
 
 	const choice = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
-	const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+	const cleanupTimers = () => {
+		if (typingInterval) {
+			clearInterval(typingInterval);
+			typingInterval = null;
+		}
+		if (nextNodeTimeout) {
+			clearTimeout(nextNodeTimeout);
+			nextNodeTimeout = null;
+		}
+		isTyping = false;
+	};
 
 	// Helper para calcular a largura máxima em caracteres
 	const getMaxChars = (currentTerminalWidth: number): number => {
@@ -59,7 +80,7 @@
 			// ignore
 		}
 
-		const prefixChars = 14;
+		const prefixChars = 13;
 		const suffixChars = 2;
 
 		return Math.max(10, Math.floor(availWidth / charWidth) - (prefixChars + suffixChars));
@@ -80,7 +101,7 @@
 			// ignore
 		}
 
-		const prefixChars = 14;
+		const prefixChars = 13;
 		const suffixChars = 2;
 
 		const textMaxWidth = Math.max(50, availWidth - (prefixChars + suffixChars) * charWidth);
@@ -114,71 +135,247 @@
 		}
 	};
 
-	const startPlaying = async () => {
-		if (isPlaying) return;
-		isPlaying = true;
-		terminalHistory = [{ type: 'system', text: '[Iniciando emulador do Boh...]' }];
-		currentBubbleText = '';
-		currentFace = choice(bohExpressions.idle);
+	// Função para renderizar partes coloridas/formatadas do texto de forma segura e estilosa
+	const parseTextParts = (text: string) => {
+		if (!text) return [];
 
-		let targetNodeId: string | null = selectedNodeId;
-		if (!targetNodeId || targetNodeId === 'start') {
-			targetNodeId = nodes['start']?.nextId || null;
-		}
+		const regex = /(‹|›|«|»|\[Sim\]|\[Não\]|\[[A-Za-z]+\])/gi;
+		const parts = text.split(regex);
 
-		if (!targetNodeId || !nodes[targetNodeId]) {
-			terminalHistory = [
-				...terminalHistory,
-				{ type: 'error', text: 'Erro: Selecione um nó de diálogo ou conecte o nó Start!' }
-			];
-			isPlaying = false;
+		return parts.map((part) => {
+			if (part === '‹' || part === '›') {
+				return { text: part, class: 'text-[#fb923c] font-bold' }; // laranja
+			}
+			if (part === '«' || part === '»') {
+				return { text: part, class: 'text-[#38bdf8] font-bold' }; // azul celeste
+			}
+			if (part.startsWith('[') && part.endsWith(']')) {
+				const content = part.slice(1, -1);
+				if (content.toLowerCase() === 's' || content.toLowerCase() === 'sim') {
+					return { text: part, class: 'text-[#34d399] font-extrabold' }; // verde esmeralda
+				}
+				if (content.toLowerCase() === 'n' || content.toLowerCase() === 'não') {
+					return { text: part, class: 'text-[#fb7185] font-extrabold' }; // rosa avermelhado
+				}
+				return { text: part, class: 'text-[#c084fc] font-bold' }; // roxo
+			}
+			return { text: part, class: '' };
+		});
+	};
+
+	const scheduleNextNode = (node: DialogueNode) => {
+		nextNodeTimeout = setTimeout(() => {
+			if (!isPlaying) return;
+
+			if (node.nextId && nodes[node.nextId]) {
+				const nextId = node.nextId;
+				visitedNodeIds = [...visitedNodeIds, nextId];
+				historyIndex = visitedNodeIds.length - 1;
+				playNode(nextId, true);
+			} else {
+				finishPlayback();
+			}
+		}, 800);
+	};
+
+	const playNode = (nodeId: string, animate: boolean = true) => {
+		cleanupTimers();
+
+		const node = nodes[nodeId];
+		if (!node) return;
+
+		activePlayNodeId = nodeId;
+		const exprList = bohExpressions[node.expression] ?? bohExpressions.idle;
+
+		if (!animate) {
+			currentBubbleText = node.text;
+			currentFace = exprList[exprList.length - 1] ?? '[ ▀ ─ ▀]';
+			isTyping = false;
+
+			if (isPlaying) {
+				scheduleNextNode(node);
+			}
 			return;
 		}
 
-		await sleep(400);
+		isTyping = true;
+		currentBubbleText = '';
+		currentFace = exprList[0] ?? '[ ▀ ─ ▀]';
+		let charIdx = 0;
 
-		// Loop principal para processar múltiplos nós sequencialmente
-		while (isPlaying && targetNodeId && nodes[targetNodeId]) {
-			activePlayNodeId = targetNodeId;
-			const node: DialogueNode = nodes[targetNodeId];
-			const exprList = bohExpressions[node.expression] ?? bohExpressions.idle;
-			currentBubbleText = '';
-
-			// Reproduzir texto do nó atual
-			for (let i = 0; i < node.text.length; i++) {
-				if (!isPlaying) break;
+		typingInterval = setInterval(() => {
+			if (charIdx < node.text.length) {
 				currentFace =
-					exprList[Math.floor(i / Math.max(1, Math.floor(exprList.length / 2))) % exprList.length];
-				currentBubbleText += node.text[i];
+					exprList[
+						Math.floor(charIdx / Math.max(1, Math.floor(exprList.length / 2))) % exprList.length
+					];
+				currentBubbleText += node.text[charIdx];
 
-				if (node.text[i].match(/[a-zA-Z0-9]/)) {
+				if (node.text[charIdx].match(/[a-zA-Z0-9]/)) {
 					playTypingSound();
 				}
-				await sleep(35);
-			}
-
-			if (isPlaying) {
-				terminalHistory = [
-					...terminalHistory,
-					{ type: 'dialogue', face: currentFace, text: currentBubbleText }
-				];
-				currentBubbleText = '';
-			}
-
-			// Verificar se existe próximo nó
-			if (isPlaying && node.nextId && nodes[node.nextId]) {
-				await sleep(600); // pausa entre nós
-				targetNodeId = node.nextId;
+				charIdx++;
 			} else {
-				break; // Sem nextId, finalizar
+				cleanupTimers();
+				if (isPlaying) {
+					scheduleNextNode(node);
+				}
+			}
+		}, 35);
+	};
+
+	const startPlaying = () => {
+		cleanupTimers();
+
+		let targetNodeId: string | null;
+
+		if (historyIndex >= 0 && historyIndex < visitedNodeIds.length) {
+			targetNodeId = visitedNodeIds[historyIndex];
+		} else {
+			targetNodeId = selectedNodeId;
+			if (!targetNodeId || targetNodeId === 'start') {
+				targetNodeId = nodes['start']?.nextId || null;
 			}
 		}
 
-		activePlayNodeId = null;
-		isPlaying = false;
-		currentFace = choice(bohExpressions.idle);
-		terminalHistory = [...terminalHistory, { type: 'system', text: '[Execução finalizada.]' }];
+		if (!targetNodeId || !nodes[targetNodeId]) {
+			errorMessage = 'Erro: Selecione um nó de diálogo ou conecte o nó Start!';
+			isPlaying = false;
+			statusState = 'idle';
+			return;
+		}
+
+		isPlaying = true;
+		statusState = 'playing';
+		systemMessage = null;
+		errorMessage = null;
+
+		if (visitedNodeIds.length === 0) {
+			visitedNodeIds = [targetNodeId];
+			historyIndex = 0;
+			playNode(targetNodeId, true);
+		} else {
+			if (currentBubbleText.length < nodes[targetNodeId].text.length) {
+				playNode(targetNodeId, true);
+			} else {
+				scheduleNextNode(nodes[targetNodeId]);
+			}
+		}
 	};
+
+	const pausePlaying = () => {
+		cleanupTimers();
+		isPlaying = false;
+		statusState = 'paused';
+	};
+
+	const togglePlayPause = () => {
+		if (isPlaying) {
+			pausePlaying();
+		} else {
+			startPlaying();
+		}
+	};
+
+	const stopPlaying = () => {
+		cleanupTimers();
+		isPlaying = false;
+		statusState = 'idle';
+		visitedNodeIds = [];
+		historyIndex = -1;
+		currentBubbleText = '';
+		currentFace = choice(bohExpressions.idle);
+		systemMessage = null;
+		errorMessage = null;
+		activePlayNodeId = null;
+	};
+
+	const finishPlayback = () => {
+		cleanupTimers();
+		isPlaying = false;
+		statusState = 'finished';
+		systemMessage = '[Execução finalizada.]';
+		activePlayNodeId = null;
+		currentFace = choice(bohExpressions.idle);
+	};
+
+	const navigateBack = () => {
+		if (visitedNodeIds.length === 0) return;
+
+		pausePlaying();
+
+		if (historyIndex > 0) {
+			historyIndex--;
+			const nodeId = visitedNodeIds[historyIndex];
+			playNode(nodeId, false);
+		}
+	};
+
+	const navigateForward = () => {
+		if (visitedNodeIds.length === 0) return;
+
+		const currentId = visitedNodeIds[historyIndex];
+		const node = nodes[currentId];
+
+		if (isTyping) {
+			cleanupTimers();
+			currentBubbleText = node.text;
+			const exprList = bohExpressions[node.expression] ?? bohExpressions.idle;
+			currentFace = exprList[exprList.length - 1] ?? '[ ▀ ─ ▀]';
+			isTyping = false;
+
+			if (isPlaying) {
+				scheduleNextNode(node);
+			}
+			return;
+		}
+
+		if (historyIndex < visitedNodeIds.length - 1) {
+			historyIndex++;
+			const nextId = visitedNodeIds[historyIndex];
+			playNode(nextId, false);
+		} else if (node && node.nextId && nodes[node.nextId]) {
+			const nextId = node.nextId;
+			visitedNodeIds = [...visitedNodeIds, nextId];
+			historyIndex = visitedNodeIds.length - 1;
+			playNode(nextId, isPlaying);
+		} else {
+			finishPlayback();
+		}
+	};
+
+	function handleKeydown(e: KeyboardEvent) {
+		const target = e.target as HTMLElement;
+		if (target.closest('input') || target.closest('textarea') || target.closest('select')) {
+			return;
+		}
+
+		if (!isPlaying && visitedNodeIds.length === 0 && e.key !== ' ') return;
+
+		if (e.key === 'ArrowLeft') {
+			e.preventDefault();
+			navigateBack();
+		} else if (e.key === 'ArrowRight') {
+			e.preventDefault();
+			navigateForward();
+		} else if (e.key === ' ') {
+			e.preventDefault();
+			togglePlayPause();
+		}
+	}
+
+	$effect(() => {
+		if (typeof window !== 'undefined') {
+			window.addEventListener('keydown', handleKeydown);
+			return () => {
+				window.removeEventListener('keydown', handleKeydown);
+			};
+		}
+	});
+
+	onDestroy(() => {
+		cleanupTimers();
+	});
 </script>
 
 <!-- Painel de Título -->
@@ -187,13 +384,22 @@
 		<h3 class="text-sm font-bold tracking-wider text-base-content/60 uppercase">Simulação</h3>
 		<p class="text-xs text-base-content/50 mt-1">Reproduza e teste o diálogo</p>
 	</div>
-	<div class="flex items-center gap-1.5">
+	<div class="flex items-center gap-2">
+		{#if statusState !== 'idle'}
+			<button
+				onclick={stopPlaying}
+				class="btn btn-sm btn-ghost gap-1 px-3 border border-base-300 font-semibold"
+				title="Reiniciar player"
+			>
+				<RotateCcw class="size-4" /> Reiniciar
+			</button>
+		{/if}
 		{#if isPlaying}
 			<button
-				onclick={isPlaying ? () => (isPlaying = false) : startPlaying}
+				onclick={pausePlaying}
 				class="btn btn-sm btn-error gap-1 px-3.5 font-bold shadow-lg shadow-error/10"
 			>
-				<Square class="size-4 fill-current" /> Parar
+				<Square class="size-4 fill-current" /> Pausar
 			</button>
 		{:else}
 			<button
@@ -225,64 +431,95 @@
 			>
 				Boh.py Terminal
 			</div>
+			<!-- Status Indicator -->
+			<div
+				class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 z-10 font-mono text-[9px] font-bold tracking-wider"
+			>
+				{#if statusState === 'playing'}
+					<span class="flex items-center gap-1 text-success">
+						<span class="w-1.5 h-1.5 rounded-full bg-success animate-ping"></span>
+						PLAYING
+					</span>
+				{:else if statusState === 'paused'}
+					<span class="flex items-center gap-1 text-warning">
+						<span class="w-1.5 h-1.5 rounded-full bg-warning"></span>
+						PAUSED
+					</span>
+				{:else if statusState === 'finished'}
+					<span class="flex items-center gap-1 text-slate-400">
+						<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+						FINISHED
+					</span>
+				{:else}
+					<span class="flex items-center gap-1 text-slate-500">
+						<span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+						IDLE
+					</span>
+				{/if}
+			</div>
 		</div>
 
 		<!-- Terminal Body -->
 		<div
-			class="px-5 py-4 flex-1 font-mono text-[13px] flex flex-col gap-0 overflow-y-auto min-h-0 select-text"
+			class="px-5 py-4 flex-1 font-mono text-[13px] flex flex-col justify-start gap-1 overflow-y-auto min-h-0 select-text"
 		>
-			<!-- Histórico de diálogos finalizados -->
-			{#each terminalHistory as entry}
-				{#if entry.type === 'system'}
-					<div class="text-[#38bdf8] text-[11px] font-semibold py-1">{entry.text}</div>
-				{:else if entry.type === 'error'}
-					<div class="text-[#f87171] font-bold py-1">{entry.text}</div>
-				{:else}
-					{@const maxChars = getMaxChars(terminalWidth)}
-					{@const wrappedLines = wrapDialogueText(entry.text, terminalWidth)}
-					{#each wrappedLines as line, i}
-						{@const paddedLine = line.padEnd(maxChars, ' ')}
-						<div class="flex items-baseline gap-0 py-0.5 text-[#f8fafc] whitespace-pre">
-							{#if i === 0}
-								<span class="text-[#4ade80] font-semibold shrink-0">{entry.face} ──┤ </span>
-								<span class="text-[#f8fafc]">{paddedLine}</span>
-								<span class="text-[#4ade80] font-semibold"> │</span>
-							{:else}
-								<span class="text-[#4ade80] font-semibold shrink-0"> │ </span>
-								<span class="text-[#f8fafc]">{paddedLine}</span>
-								<span class="text-[#4ade80] font-semibold"> │</span>
-							{/if}
-						</div>
-					{/each}
-				{/if}
-			{/each}
+			{#if systemMessage}
+				<div class="text-[#38bdf8] text-[11px] font-semibold py-1">{systemMessage}</div>
+			{/if}
+			{#if errorMessage}
+				<div class="text-[#f87171] font-bold py-1">{errorMessage}</div>
+			{/if}
 
-			<!-- Linha ativa sendo digitada agora -->
-			{#if isPlaying && currentBubbleText}
+			{#if visitedNodeIds.length > 0 && historyIndex >= 0 && historyIndex < visitedNodeIds.length}
 				{@const maxChars = getMaxChars(terminalWidth)}
 				{@const activeLines = wrapDialogueText(currentBubbleText, terminalWidth)}
-				{#each activeLines as line, i}
-					{@const paddedLine = line.padEnd(maxChars, ' ')}
-					<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
+				<div
+					class="grid grid-cols-[auto_1fr] gap-0 font-mono text-[13px] select-text whitespace-pre"
+				>
+					{#each activeLines as line, i}
+						{@const paddedLine = line.padEnd(maxChars, ' ')}
 						{#if i === 0}
-							<span class="text-[#4ade80] font-semibold shrink-0">{currentFace} ──┤ </span>
-							<span class="text-[#f8fafc]">{paddedLine}</span>
-							<span class="text-[#4ade80] font-semibold blink-cursor"> │</span>
+							<span class="text-[#4ade80] font-semibold select-none">{currentFace} ──┤</span>
 						{:else}
-							<span class="text-[#4ade80] font-semibold shrink-0"> │ </span>
-							<span class="text-[#f8fafc]">{paddedLine}</span>
-							<span class="text-[#4ade80] font-semibold blink-cursor"> │</span>
+							<span class="text-[#4ade80] font-semibold text-right select-none">│</span>
 						{/if}
-					</div>
-				{/each}
-			{:else if !isPlaying && terminalHistory.length === 0}
+						<div class="flex items-baseline gap-0">
+							<span class="text-[#4ade80] font-semibold shrink-0"> </span>
+							<span class="text-[#f8fafc]">
+								{#each parseTextParts(paddedLine) as part}
+									<span class={part.class}>{part.text}</span>
+								{/each}
+							</span>
+							<span
+								class="text-[#4ade80] font-semibold"
+								class:blink-cursor={isTyping && i === activeLines.length - 1}>│</span
+							>
+						</div>
+					{/each}
+				</div>
+			{:else if statusState === 'idle' && !systemMessage}
 				<div class="flex items-baseline gap-0 py-0.5 whitespace-pre">
 					<span class="text-[#4ade80]/50 shrink-0">{currentFace} ──┤</span>
-					<span class="ml-1 italic text-slate-400">Aperte Play para iniciar...</span>
+					<span class="ml-1 italic text-slate-400">Aperte Play ou Espaço para iniciar...</span>
 					<span class="text-[#4ade80]/50"> │</span>
 				</div>
 			{/if}
 		</div>
+
+		<!-- Terminal Footer with Shortcuts -->
+		{#if statusState !== 'idle'}
+			<div
+				class="px-4 py-1.5 bg-[#0a0c12] border-t border-[#131722] flex items-center justify-between text-[10px] font-mono text-[#4b526d] select-none shrink-0"
+			>
+				<div class="flex gap-4">
+					<span><span class="text-[#fb923c] font-bold">←</span> anterior</span>
+					<span><span class="text-[#38bdf8] font-bold">→</span> avançar/pular</span>
+				</div>
+				<div>
+					<span>[Espaço] Play/Pause</span>
+				</div>
+			</div>
+		{/if}
 	</div>
 </div>
 
