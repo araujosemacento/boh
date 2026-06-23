@@ -3,8 +3,10 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render } from 'vitest-browser-svelte';
 import DialoguePlayer from './DialoguePlayer.svelte';
 
+import type { DialogueNode } from '../types';
+
 describe('DialoguePlayer.svelte', () => {
-	const nodes = {
+	const nodes: Record<string, DialogueNode> = {
 		start: {
 			id: 'start',
 			type: 'start',
@@ -21,7 +23,7 @@ describe('DialoguePlayer.svelte', () => {
 			y: 200,
 			expression: 'annoyed',
 			text: 'Você concorda? [Sim] ou [Não] ‹Boh›',
-			nextId: null
+			nextId: undefined
 		}
 	};
 
