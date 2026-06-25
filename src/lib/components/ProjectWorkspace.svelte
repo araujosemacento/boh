@@ -188,6 +188,7 @@
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<div
 						onmousedown={(e) => {
+							if (e.button === 1) return;
 							e.stopPropagation();
 							workspace.selectedNodeId = node.id;
 						}}

@@ -126,9 +126,9 @@ describe('canvasUtils', () => {
 
 			expect(startPos.x).toBe(100);
 			expect(startPos.y).toBe(100);
-			expect(n1Pos.x).toBe(100 + 340);
+			expect(n1Pos.x).toBe(100 + 128 + 80);
 			expect(n1Pos.y).toBe(100);
-			expect(n2Pos.x).toBe(100 + 340 * 2);
+			expect(n2Pos.x).toBe(100 + 128 + 80 + 288 + 80);
 			expect(n2Pos.y).toBe(100);
 
 			expect(isolatedPos.x).toBe(100);

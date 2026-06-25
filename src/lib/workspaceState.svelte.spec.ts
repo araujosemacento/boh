@@ -106,7 +106,7 @@ describe('WorkspaceState', () => {
 
 		expect(workspace.nodes['start'].x).toBe(100);
 		expect(workspace.nodes['start'].y).toBe(100);
-		expect(workspace.nodes['node-1'].x).toBe(440);
+		expect(workspace.nodes['node-1'].x).toBe(308);
 		expect(workspace.nodes['node-1'].y).toBe(100);
 	});
 

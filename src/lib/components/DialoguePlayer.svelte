@@ -52,6 +52,20 @@
 	let nextNodeTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isTyping = $state(false);
 
+	let prevSelectedNodeId = $state<string | null>(null);
+	$effect(() => {
+		if (selectedNodeId !== prevSelectedNodeId) {
+			prevSelectedNodeId = selectedNodeId;
+			if (statusState !== 'playing') {
+				visitedNodeIds = [];
+				historyIndex = -1;
+				statusState = 'idle';
+				systemMessage = null;
+				errorMessage = null;
+			}
+		}
+	});
+
 	const choice = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 	const cleanupTimers = () => {
@@ -229,9 +243,14 @@
 
 		let targetNodeId: string | null;
 
-		if (historyIndex >= 0 && historyIndex < visitedNodeIds.length) {
+		if (historyIndex >= 0 && historyIndex < visitedNodeIds.length && statusState !== 'finished') {
 			targetNodeId = visitedNodeIds[historyIndex];
 		} else {
+			if (statusState === 'finished') {
+				visitedNodeIds = [];
+				historyIndex = -1;
+				currentBubbleText = '';
+			}
 			targetNodeId = selectedNodeId;
 			if (!targetNodeId || targetNodeId === 'start') {
 				targetNodeId = nodes['start']?.nextId || null;

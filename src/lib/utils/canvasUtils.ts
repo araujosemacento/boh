@@ -146,45 +146,58 @@ export const tidyNodesLayout = (nodes: Record<string, DialogueNode>): TidyPositi
 
 	const positions: TidyPosition[] = [];
 
-	const columnWidth = 340;
-	const rowHeight = 280;
-	const colsPerRow = 4;
 	const startX = 100;
 	let currentY = 100;
 
-	// Posiciona as cadeias conectadas em formato serpenteante
+	const maxWidth = 1400; // Largura limite para quebra de linha
+	const rowGap = 320; // Espaçamento vertical generoso para as splines de carriage return
+	const colGap = 80; // Espaçamento horizontal
+
+	// Posiciona as cadeias conectadas no formato Leitura (esquerda para direita com word-wrap)
 	for (const chain of connectedChains) {
-		const len = chain.length;
-		for (let i = 0; i < len; i++) {
-			const id = chain[i];
-			const row = Math.floor(i / colsPerRow);
-			const colInRow = i % colsPerRow;
-			// Padrão serpenteante: inverte direção da coluna em linhas ímpares
-			const col = row % 2 === 0 ? colInRow : colsPerRow - 1 - colInRow;
+		let currentX = startX;
+		let lineMaxY = currentY;
+
+		for (const id of chain) {
+			const node = nodes[id];
+			const w = node?.type === 'start' ? START_WIDTH : NODE_WIDTH;
+
+			if (currentX + w > startX + maxWidth && currentX !== startX) {
+				currentX = startX;
+				currentY += rowGap;
+			}
 
 			positions.push({
 				id,
-				x: startX + col * columnWidth,
-				y: currentY + row * rowHeight
+				x: currentX,
+				y: currentY
 			});
+
+			currentX += w + colGap;
+			if (currentY > lineMaxY) lineMaxY = currentY;
 		}
-		const numRows = Math.ceil(len / colsPerRow);
-		currentY += numRows * rowHeight + 120; // Avança o Y com margem de espaçamento
+		currentY = lineMaxY + rowGap + 80;
 	}
 
 	// Posiciona os nós isolados/desconectados em grade estruturada no rodapé
 	if (isolatedNodes.length > 0) {
-		const isolatedCols = 4;
-		for (let i = 0; i < isolatedNodes.length; i++) {
-			const id = isolatedNodes[i];
-			const row = Math.floor(i / isolatedCols);
-			const col = i % isolatedCols;
+		let currentX = startX;
+
+		for (const id of isolatedNodes) {
+			const w = NODE_WIDTH;
+
+			if (currentX + w > startX + maxWidth && currentX !== startX) {
+				currentX = startX;
+				currentY += rowGap;
+			}
 
 			positions.push({
 				id,
-				x: startX + col * columnWidth,
-				y: currentY + row * rowHeight
+				x: currentX,
+				y: currentY
 			});
+
+			currentX += w + colGap;
 		}
 	}
 

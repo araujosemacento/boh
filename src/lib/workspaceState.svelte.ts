@@ -304,8 +304,7 @@ export class WorkspaceState {
 
 			const targetNode = Object.values(this.nodes).find((n) => {
 				if (n.type === 'start' || n.id === this.connectingFromId) return false;
-				const port = getInputPortPos(n);
-				return Math.hypot(mx - port.x, my - port.y) < 25;
+				return mx >= n.x && mx <= n.x + NODE_WIDTH && my >= n.y && my <= n.y + NODE_HEIGHT;
 			});
 
 			if (targetNode) {
