@@ -133,10 +133,12 @@ export class WorkspaceState {
 
 	deleteNode = (id: string) => {
 		if (id === 'start') return;
-		Object.keys(this.nodes).forEach((key) => {
-			if (this.nodes[key].nextId === id) this.nodes[key].nextId = undefined;
+		const newNodes = { ...this.nodes };
+		Object.keys(newNodes).forEach((key) => {
+			if (newNodes[key].nextId === id) newNodes[key].nextId = undefined;
 		});
-		delete this.nodes[id];
+		delete newNodes[id];
+		this.nodes = newNodes;
 		if (this.selectedNodeId === id) this.selectedNodeId = null;
 		if (this.activePlayNodeId === id) this.activePlayNodeId = null;
 	};
