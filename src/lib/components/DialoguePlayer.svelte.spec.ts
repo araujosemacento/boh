@@ -99,4 +99,17 @@ describe('DialoguePlayer.svelte', () => {
 		// Deve pausar
 		await expect.element(page.getByText('PAUSED')).toBeInTheDocument();
 	});
+
+	it('should fallback to start node connection if selectedNodeIds is empty', async () => {
+		render(DialoguePlayer, { nodes, selectedNodeIds: [] });
+
+		const playBtn = page.getByRole('button', { name: 'Play' });
+		await playBtn.click();
+
+		vi.useFakeTimers();
+		await vi.advanceTimersByTimeAsync(1300);
+		vi.useRealTimers();
+
+		await expect.element(page.getByText('Você concorda?')).toBeInTheDocument();
+	});
 });

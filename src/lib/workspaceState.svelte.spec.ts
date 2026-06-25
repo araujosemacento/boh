@@ -179,7 +179,15 @@ describe('WorkspaceState', () => {
 		const workspace = new WorkspaceState(project);
 		const mockCanvas = document.createElement('div');
 		vi.spyOn(mockCanvas, 'getBoundingClientRect').mockReturnValue({
-			left: 0, top: 0, width: 1000, height: 800, right: 1000, bottom: 800, x: 0, y: 0, toJSON: () => {}
+			left: 0,
+			top: 0,
+			width: 1000,
+			height: 800,
+			right: 1000,
+			bottom: 800,
+			x: 0,
+			y: 0,
+			toJSON: () => {}
 		});
 		workspace.canvasElement = mockCanvas;
 
@@ -310,5 +318,72 @@ describe('WorkspaceState', () => {
 		appendSpy.mockRestore();
 		clickSpy.mockRestore();
 		removeSpy.mockRestore();
+	});
+
+	it('should find path and connected chains correctly', () => {
+		const workspace = new WorkspaceState(project);
+		workspace.nodes['node-2'] = {
+			id: 'node-2',
+			type: 'boh',
+			x: 500,
+			y: 100,
+			expression: 'idle',
+			text: '',
+			nextId: undefined
+		};
+		workspace.nodes['node-1'].nextId = 'node-2';
+
+		// path from start to node-2
+		const path = workspace.findPath('start', 'node-2');
+		expect(path).toEqual(['start', 'node-1', 'node-2']);
+
+		// connected chain from start
+		const chain = workspace.getConnectedChain('start');
+		expect(chain).toEqual(['start', 'node-1', 'node-2']);
+	});
+
+	it('should handle advanced selection with Shift and Ctrl', () => {
+		const workspace = new WorkspaceState(project);
+		workspace.nodes['node-2'] = {
+			id: 'node-2',
+			type: 'boh',
+			x: 500,
+			y: 100,
+			expression: 'idle',
+			text: '',
+			nextId: undefined
+		};
+		workspace.nodes['node-1'].nextId = 'node-2';
+
+		// Normal click
+		workspace.handleNodeHeaderMouseDown(new MouseEvent('mousedown', { button: 0 }), 'start');
+		expect(workspace.selectedNodeIds).toEqual(['start']);
+
+		// Shift click on node-2 selects path start -> node-1 -> node-2
+		workspace.handleNodeHeaderMouseDown(
+			new MouseEvent('mousedown', { button: 0, shiftKey: true }),
+			'node-2'
+		);
+		expect(workspace.selectedNodeIds).toContain('start');
+		expect(workspace.selectedNodeIds).toContain('node-1');
+		expect(workspace.selectedNodeIds).toContain('node-2');
+	});
+
+	it('should trigger debouncedSave', async () => {
+		vi.useFakeTimers();
+		const workspace = new WorkspaceState(project);
+		const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+		workspace.debouncedSave();
+		expect(workspace.saveStatus).toBe('saving');
+
+		vi.advanceTimersByTime(1600);
+		expect(workspace.saveStatus).toBe('saved');
+
+		vi.advanceTimersByTime(2000);
+		expect(workspace.saveStatus).toBe('idle');
+
+		alertSpy.mockRestore();
+		vi.useRealTimers();
 	});
 });

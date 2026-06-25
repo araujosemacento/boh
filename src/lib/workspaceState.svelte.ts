@@ -1,7 +1,6 @@
 import type { Project, DialogueNode } from './types';
 import { SvelteSet } from 'svelte/reactivity';
 import {
-	getInputPortPos,
 	findFreePosition,
 	getNonOutlierNodes,
 	tidyNodesLayout,
@@ -105,7 +104,10 @@ export class WorkspaceState {
 			}
 
 			// Tenta referenciar a partir do nó selecionado ou o mais próximo do centro
-			let refNode = this.selectedNodeIds.length > 0 ? this.nodes[this.selectedNodeIds[this.selectedNodeIds.length - 1]] : null;
+			let refNode =
+				this.selectedNodeIds.length > 0
+					? this.nodes[this.selectedNodeIds[this.selectedNodeIds.length - 1]]
+					: null;
 			if (!refNode) {
 				let minD = Infinity;
 				Object.values(this.nodes).forEach((n) => {
@@ -149,7 +151,7 @@ export class WorkspaceState {
 		delete newNodes[id];
 		this.nodes = newNodes;
 		if (this.selectedNodeIds.includes(id)) {
-			this.selectedNodeIds = this.selectedNodeIds.filter(sid => sid !== id);
+			this.selectedNodeIds = this.selectedNodeIds.filter((sid) => sid !== id);
 		}
 		if (this.activePlayNodeId === id) this.activePlayNodeId = null;
 	};
@@ -253,7 +255,7 @@ export class WorkspaceState {
 	};
 
 	findPath = (startId: string, targetId: string): string[] | null => {
-		const visited = new Set<string>();
+		const visited = new SvelteSet<string>();
 		const queue: { id: string; path: string[] }[] = [{ id: startId, path: [startId] }];
 		while (queue.length > 0) {
 			const { id, path } = queue.shift()!;
@@ -270,7 +272,7 @@ export class WorkspaceState {
 	getConnectedChain = (startId: string): string[] => {
 		const chain: string[] = [];
 		let currentId: string | undefined = startId;
-		const visited = new Set<string>();
+		const visited = new SvelteSet<string>();
 		while (currentId && this.nodes[currentId] && !visited.has(currentId)) {
 			chain.push(currentId);
 			visited.add(currentId);
@@ -283,10 +285,10 @@ export class WorkspaceState {
 		if (e.button !== 0) return; // Apenas arraste com botão esquerdo
 		e.stopPropagation();
 		e.preventDefault();
-		
+
 		if (e.ctrlKey || e.metaKey) {
 			if (this.selectedNodeIds.includes(id)) {
-				this.selectedNodeIds = this.selectedNodeIds.filter(sid => sid !== id);
+				this.selectedNodeIds = this.selectedNodeIds.filter((sid) => sid !== id);
 			} else {
 				this.selectedNodeIds = [...this.selectedNodeIds, id];
 			}
@@ -295,12 +297,12 @@ export class WorkspaceState {
 			if (lastSelected && lastSelected !== id && this.nodes[lastSelected]) {
 				const path = this.findPath(lastSelected, id);
 				if (path) {
-					const newSelection = new Set(this.selectedNodeIds);
-					path.forEach(p => newSelection.add(p));
+					const newSelection = new SvelteSet(this.selectedNodeIds);
+					path.forEach((p) => newSelection.add(p));
 					this.selectedNodeIds = Array.from(newSelection);
 				} else {
 					const chain = this.getConnectedChain(lastSelected);
-					const newSelection = new Set([...this.selectedNodeIds, ...chain, id]);
+					const newSelection = new SvelteSet([...this.selectedNodeIds, ...chain, id]);
 					this.selectedNodeIds = Array.from(newSelection);
 				}
 			} else {
@@ -353,7 +355,7 @@ export class WorkspaceState {
 		if (this.draggedNodeId) {
 			const dx = e.clientX - this.dragStartOffset.x;
 			const dy = e.clientY - this.dragStartOffset.y;
-			
+
 			if (this.selectedNodeIds.includes(this.draggedNodeId)) {
 				for (const sid of this.selectedNodeIds) {
 					const node = this.nodes[sid];
@@ -398,13 +400,15 @@ export class WorkspaceState {
 				const cMinY = (minY - this.pan.y) / this.zoom;
 				const cMaxY = (maxY - this.pan.y) / this.zoom;
 
-				const newlySelected = Object.values(this.nodes).filter(n => {
-					const w = n.type === 'start' ? 128 : NODE_WIDTH;
-					const h = n.type === 'start' ? 40 : NODE_HEIGHT;
-					return !(n.x > cMaxX || n.x + w < cMinX || n.y > cMaxY || n.y + h < cMinY);
-				}).map(n => n.id);
+				const newlySelected = Object.values(this.nodes)
+					.filter((n) => {
+						const w = n.type === 'start' ? 128 : NODE_WIDTH;
+						const h = n.type === 'start' ? 40 : NODE_HEIGHT;
+						return !(n.x > cMaxX || n.x + w < cMinX || n.y > cMaxY || n.y + h < cMinY);
+					})
+					.map((n) => n.id);
 
-				const uniqueSelection = new Set([...this.selectedNodeIds, ...newlySelected]);
+				const uniqueSelection = new SvelteSet([...this.selectedNodeIds, ...newlySelected]);
 				this.selectedNodeIds = Array.from(uniqueSelection);
 			}
 		}
@@ -446,7 +450,7 @@ export class WorkspaceState {
 		if (idx >= 0) savedProjects[idx] = updated;
 		else savedProjects.push(updated);
 		localStorage.setItem('saved-projects-v2', JSON.stringify(savedProjects));
-		
+
 		if (!silent) {
 			alert('Projeto salvo localmente com sucesso!');
 		}

@@ -3,18 +3,15 @@
 	import type { DialogueNode } from '../types';
 	import { prepareWithSegments, layoutWithLines, measureNaturalWidth } from '@chenglou/pretext';
 	import { onDestroy } from 'svelte';
+	import { SvelteSet } from 'svelte/reactivity';
 
 	let {
 		nodes,
 		terminalWidth = $bindable(480),
-		// eslint-disable-next-line no-useless-assignment
-		// eslint-disable-next-line no-useless-assignment
-		activePlayNodeId = $bindable(null),
 		selectedNodeIds = []
 	}: {
 		nodes: Record<string, DialogueNode>;
 		terminalWidth?: number;
-		activePlayNodeId?: string | null;
 		selectedNodeIds?: string[];
 	} = $props();
 
@@ -71,18 +68,18 @@
 	});
 
 	const computePlaybackSequence = (sIds: string[]): string[] => {
-		const idSet = new Set(sIds);
+		const idSet = new SvelteSet(sIds);
 		const chains: string[][] = [];
-		const visited = new Set<string>();
+		const visited = new SvelteSet<string>();
 
 		for (const id of sIds) {
 			if (visited.has(id)) continue;
-			
+
 			let current = id;
-			let prev = Object.values(nodes).find(n => n.nextId === current && idSet.has(n.id));
+			let prev = Object.values(nodes).find((n) => n.nextId === current && idSet.has(n.id));
 			while (prev) {
 				current = prev.id;
-				prev = Object.values(nodes).find(n => n.nextId === current && idSet.has(n.id));
+				prev = Object.values(nodes).find((n) => n.nextId === current && idSet.has(n.id));
 			}
 
 			const chain: string[] = [];
@@ -99,7 +96,7 @@
 			const headA = nodes[a[0]];
 			const headB = nodes[b[0]];
 			if (!headA || !headB) return 0;
-			
+
 			if (Math.abs(headA.y - headB.y) > 100) {
 				return headA.y - headB.y;
 			}
@@ -113,10 +110,10 @@
 		if (selectedNodeIds.length > 0) {
 			return computePlaybackSequence(selectedNodeIds);
 		}
-		
+
 		const seq = [];
 		let current = nodes['start']?.nextId;
-		const visited = new Set();
+		const visited = new SvelteSet();
 		while (current && nodes[current] && !visited.has(current)) {
 			seq.push(current);
 			visited.add(current);
@@ -259,7 +256,6 @@
 		const node = nodes[nodeId];
 		if (!node) return;
 
-		activePlayNodeId = nodeId;
 		const exprList = bohExpressions[node.expression] ?? bohExpressions.idle;
 
 		if (!animate) {
@@ -302,7 +298,7 @@
 	const startPlaying = () => {
 		cleanupTimers();
 
-		let targetNodeId: string | null = null;
+		let targetNodeId: string | null;
 
 		if (historyIndex >= 0 && historyIndex < visitedNodeIds.length && statusState !== 'finished') {
 			targetNodeId = visitedNodeIds[historyIndex];
@@ -365,7 +361,6 @@
 		currentFace = choice(bohExpressions.idle);
 		systemMessage = null;
 		errorMessage = null;
-		activePlayNodeId = null;
 	};
 
 	const finishPlayback = () => {
@@ -373,7 +368,6 @@
 		isPlaying = false;
 		statusState = 'finished';
 		systemMessage = '[Execução finalizada.]';
-		activePlayNodeId = null;
 		currentFace = choice(bohExpressions.idle);
 	};
 

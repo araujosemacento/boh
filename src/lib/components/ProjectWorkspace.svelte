@@ -326,7 +326,15 @@
 			{#if workspace.isBoxSelecting}
 				<div
 					class="absolute border-2 border-primary bg-primary/10 pointer-events-none z-40 rounded-sm"
-					style="left: {Math.min(workspace.selectionBoxStart.x, workspace.selectionBoxEnd.x)}px; top: {Math.min(workspace.selectionBoxStart.y, workspace.selectionBoxEnd.y)}px; width: {Math.abs(workspace.selectionBoxEnd.x - workspace.selectionBoxStart.x)}px; height: {Math.abs(workspace.selectionBoxEnd.y - workspace.selectionBoxStart.y)}px;"
+					style="left: {Math.min(
+						workspace.selectionBoxStart.x,
+						workspace.selectionBoxEnd.x
+					)}px; top: {Math.min(
+						workspace.selectionBoxStart.y,
+						workspace.selectionBoxEnd.y
+					)}px; width: {Math.abs(
+						workspace.selectionBoxEnd.x - workspace.selectionBoxStart.x
+					)}px; height: {Math.abs(workspace.selectionBoxEnd.y - workspace.selectionBoxStart.y)}px;"
 				></div>
 			{/if}
 
