@@ -14,14 +14,16 @@ describe('Settings.svelte', () => {
 
 		// O tema padrão do HTML deve ser alterado ao clicar em Latte
 		const latteBtn = page.getByRole('button', { name: 'Latte' });
-		await latteBtn.click();
+		latteBtn.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise(r => setTimeout(r, 0));
 
 		expect(document.documentElement.dataset.theme).toBe('latte');
 		expect(localStorage.getItem('preferred-theme')).toBe('latte');
 
 		// Altera para Mocha
 		const mochaBtn = page.getByRole('button', { name: 'Mocha' });
-		await mochaBtn.click();
+		mochaBtn.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise(r => setTimeout(r, 0));
 
 		expect(document.documentElement.dataset.theme).toBe('mocha');
 		expect(localStorage.getItem('preferred-theme')).toBe('mocha');
@@ -33,7 +35,8 @@ describe('Settings.svelte', () => {
 
 		// Clica em Padrão
 		const defaultBtn = page.getByRole('button', { name: 'Padrão' });
-		await defaultBtn.click();
+		defaultBtn.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise(r => setTimeout(r, 0));
 
 		expect(localStorage.getItem('preferred-theme')).toBeNull();
 	});

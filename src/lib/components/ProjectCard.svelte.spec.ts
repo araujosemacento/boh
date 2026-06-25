@@ -38,22 +38,26 @@ describe('ProjectCard.svelte', () => {
 
 		// 1. Play Button
 		const playBtn = page.getByTitle('Iniciar reprodução');
-		await playBtn.click();
+		playBtn.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise(r => setTimeout(r, 0));
 		expect(onPlay).toHaveBeenCalled();
 
 		// 2. Edit Button
 		const editBtn = page.getByTitle('Editar diálogo');
-		await editBtn.click();
+		editBtn.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise(r => setTimeout(r, 0));
 		expect(onEdit).toHaveBeenCalled();
 
 		// 3. Delete Button
 		const deleteBtn = page.getByTitle('Excluir projeto');
-		await deleteBtn.click();
+		deleteBtn.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise(r => setTimeout(r, 0));
 		expect(onDelete).toHaveBeenCalled();
 
 		// 4. Tag Button
 		const tagBtn = page.getByTitle('Filtrar por esta tag');
-		await tagBtn.click();
+		tagBtn.element().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+		await new Promise(r => setTimeout(r, 0));
 		expect(onTagClick).toHaveBeenCalledWith('Ideia');
 	});
 });

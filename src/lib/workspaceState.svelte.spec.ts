@@ -64,7 +64,7 @@ describe('WorkspaceState', () => {
 		expect(workspace.nodes[addedNodeId]).toBeDefined();
 		expect(workspace.nodes[addedNodeId].type).toBe('boh');
 		expect(workspace.nodes[addedNodeId].expression).toBe('idle');
-		expect(workspace.selectedNodeId).toBe(addedNodeId);
+		expect(workspace.selectedNodeIds).toContain(addedNodeId);
 	});
 
 	it('should add a Boh node at exact position when specified', () => {
@@ -162,7 +162,7 @@ describe('WorkspaceState', () => {
 
 	it('should handle canvas mouse panning', () => {
 		const workspace = new WorkspaceState(project);
-		const downEvent = new MouseEvent('mousedown', { button: 0, clientX: 100, clientY: 100 });
+		const downEvent = new MouseEvent('mousedown', { button: 1, clientX: 100, clientY: 100 });
 		workspace.handleCanvasMouseDown(downEvent);
 		expect(workspace.isPanning).toBe(true);
 
@@ -173,6 +173,27 @@ describe('WorkspaceState', () => {
 
 		workspace.handleGlobalMouseUp(moveEvent);
 		expect(workspace.isPanning).toBe(false);
+	});
+
+	it('should handle box selection with left click', () => {
+		const workspace = new WorkspaceState(project);
+		const mockCanvas = document.createElement('div');
+		vi.spyOn(mockCanvas, 'getBoundingClientRect').mockReturnValue({
+			left: 0, top: 0, width: 1000, height: 800, right: 1000, bottom: 800, x: 0, y: 0, toJSON: () => {}
+		});
+		workspace.canvasElement = mockCanvas;
+
+		const downEvent = new MouseEvent('mousedown', { button: 0, clientX: 100, clientY: 100 });
+		workspace.handleCanvasMouseDown(downEvent);
+		expect(workspace.isBoxSelecting).toBe(true);
+		expect(workspace.selectionBoxStart).toEqual({ x: 100, y: 100 });
+
+		const moveEvent = new MouseEvent('mousemove', { clientX: 200, clientY: 200 });
+		workspace.handleGlobalMouseMove(moveEvent);
+		expect(workspace.selectionBoxEnd).toEqual({ x: 200, y: 200 });
+
+		workspace.handleGlobalMouseUp(moveEvent);
+		expect(workspace.isBoxSelecting).toBe(false);
 	});
 
 	it('should handle zoom wheel event', () => {

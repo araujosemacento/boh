@@ -8,13 +8,14 @@
 		nodes,
 		terminalWidth = $bindable(480),
 		// eslint-disable-next-line no-useless-assignment
+		// eslint-disable-next-line no-useless-assignment
 		activePlayNodeId = $bindable(null),
-		selectedNodeId = null
+		selectedNodeIds = []
 	}: {
 		nodes: Record<string, DialogueNode>;
 		terminalWidth?: number;
 		activePlayNodeId?: string | null;
-		selectedNodeId?: string | null;
+		selectedNodeIds?: string[];
 	} = $props();
 
 	// Expressões fiéis ao Boh.py original
@@ -52,10 +53,13 @@
 	let nextNodeTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isTyping = $state(false);
 
-	let prevSelectedNodeId = $state<string | null>(null);
+	let prevSelectedNodeIds = $state<string>('');
+	let playbackSequence = $state<string[]>([]);
+
 	$effect(() => {
-		if (selectedNodeId !== prevSelectedNodeId) {
-			prevSelectedNodeId = selectedNodeId;
+		const curr = JSON.stringify(selectedNodeIds);
+		if (curr !== prevSelectedNodeIds) {
+			prevSelectedNodeIds = curr;
 			if (statusState !== 'playing') {
 				visitedNodeIds = [];
 				historyIndex = -1;
@@ -65,6 +69,61 @@
 			}
 		}
 	});
+
+	const computePlaybackSequence = (sIds: string[]): string[] => {
+		const idSet = new Set(sIds);
+		const chains: string[][] = [];
+		const visited = new Set<string>();
+
+		for (const id of sIds) {
+			if (visited.has(id)) continue;
+			
+			let current = id;
+			let prev = Object.values(nodes).find(n => n.nextId === current && idSet.has(n.id));
+			while (prev) {
+				current = prev.id;
+				prev = Object.values(nodes).find(n => n.nextId === current && idSet.has(n.id));
+			}
+
+			const chain: string[] = [];
+			let walk: string | undefined = current;
+			while (walk && idSet.has(walk) && !visited.has(walk)) {
+				chain.push(walk);
+				visited.add(walk);
+				walk = nodes[walk]?.nextId;
+			}
+			chains.push(chain);
+		}
+
+		chains.sort((a, b) => {
+			const headA = nodes[a[0]];
+			const headB = nodes[b[0]];
+			if (!headA || !headB) return 0;
+			
+			if (Math.abs(headA.y - headB.y) > 100) {
+				return headA.y - headB.y;
+			}
+			return headA.x - headB.x;
+		});
+
+		return chains.flat();
+	};
+
+	const getSequence = () => {
+		if (selectedNodeIds.length > 0) {
+			return computePlaybackSequence(selectedNodeIds);
+		}
+		
+		const seq = [];
+		let current = nodes['start']?.nextId;
+		const visited = new Set();
+		while (current && nodes[current] && !visited.has(current)) {
+			seq.push(current);
+			visited.add(current);
+			current = nodes[current].nextId;
+		}
+		return seq;
+	};
 
 	const choice = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
@@ -181,8 +240,10 @@
 		nextNodeTimeout = setTimeout(() => {
 			if (!isPlaying) return;
 
-			if (node.nextId && nodes[node.nextId]) {
-				const nextId = node.nextId;
+			const currentIndex = playbackSequence.indexOf(node.id);
+			const nextId = currentIndex >= 0 ? playbackSequence[currentIndex + 1] : null;
+
+			if (nextId && nodes[nextId]) {
 				visitedNodeIds = [...visitedNodeIds, nextId];
 				historyIndex = visitedNodeIds.length - 1;
 				playNode(nextId, true);
@@ -241,7 +302,7 @@
 	const startPlaying = () => {
 		cleanupTimers();
 
-		let targetNodeId: string | null;
+		let targetNodeId: string | null = null;
 
 		if (historyIndex >= 0 && historyIndex < visitedNodeIds.length && statusState !== 'finished') {
 			targetNodeId = visitedNodeIds[historyIndex];
@@ -251,10 +312,8 @@
 				historyIndex = -1;
 				currentBubbleText = '';
 			}
-			targetNodeId = selectedNodeId;
-			if (!targetNodeId || targetNodeId === 'start') {
-				targetNodeId = nodes['start']?.nextId || null;
-			}
+			playbackSequence = getSequence();
+			targetNodeId = playbackSequence[0] || null;
 		}
 
 		if (!targetNodeId || !nodes[targetNodeId]) {
@@ -353,13 +412,17 @@
 			historyIndex++;
 			const nextId = visitedNodeIds[historyIndex];
 			playNode(nextId, false);
-		} else if (node && node.nextId && nodes[node.nextId]) {
-			const nextId = node.nextId;
-			visitedNodeIds = [...visitedNodeIds, nextId];
-			historyIndex = visitedNodeIds.length - 1;
-			playNode(nextId, isPlaying);
 		} else {
-			finishPlayback();
+			const currentIndex = playbackSequence.indexOf(node.id);
+			const nextId = currentIndex >= 0 ? playbackSequence[currentIndex + 1] : null;
+
+			if (nextId && nodes[nextId]) {
+				visitedNodeIds = [...visitedNodeIds, nextId];
+				historyIndex = visitedNodeIds.length - 1;
+				playNode(nextId, isPlaying);
+			} else {
+				finishPlayback();
+			}
 		}
 	};
 

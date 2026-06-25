@@ -28,7 +28,7 @@ describe('DialoguePlayer.svelte', () => {
 	};
 
 	beforeEach(() => {
-		vi.useFakeTimers();
+		vi.useRealTimers();
 	});
 
 	afterEach(() => {
@@ -38,7 +38,6 @@ describe('DialoguePlayer.svelte', () => {
 	it('should render in idle state initially', async () => {
 		render(DialoguePlayer, { nodes });
 
-		// Mostra a instrução inicial
 		await expect
 			.element(page.getByText('Aperte Play ou Espaço para iniciar...'))
 			.toBeInTheDocument();
@@ -54,9 +53,9 @@ describe('DialoguePlayer.svelte', () => {
 		// O status deve mudar para PLAYING
 		await expect.element(page.getByText('PLAYING')).toBeInTheDocument();
 
-		// Avança os timers para completar o efeito de digitação (35ms por caractere)
-		// O texto tem 35 caracteres, 35 * 35ms = 1225ms
+		vi.useFakeTimers();
 		await vi.advanceTimersByTimeAsync(1300);
+		vi.useRealTimers();
 
 		// O texto completo deve estar visível
 		await expect.element(page.getByText('Você concorda?')).toBeInTheDocument();
@@ -68,20 +67,18 @@ describe('DialoguePlayer.svelte', () => {
 		const playBtn = page.getByRole('button', { name: 'Play' });
 		await playBtn.click();
 
-		// Avança para o fim da digitação
+		vi.useFakeTimers();
 		await vi.advanceTimersByTimeAsync(1300);
+		vi.useRealTimers();
 
-		// Verifica se o texto [Sim] foi formatado com a classe de destaque correspondente
 		const simEl = page.getByText('[Sim]');
 		await expect.element(simEl).toBeInTheDocument();
 		await expect.element(simEl).toHaveClass('text-[#34d399]');
 
-		// Verifica se o texto [Não] foi formatado com a classe de destaque correspondente
 		const naoEl = page.getByText('[Não]');
 		await expect.element(naoEl).toBeInTheDocument();
 		await expect.element(naoEl).toHaveClass('text-[#fb7185]');
 
-		// Verifica as setas ornamentais
 		const bEl = page.getByText('‹');
 		await expect.element(bEl).toBeInTheDocument();
 		await expect.element(bEl).toHaveClass('text-[#fb923c]');

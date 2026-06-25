@@ -37,7 +37,16 @@ export class WorkspaceState {
 
 	// Estados de seleção
 	activePlayNodeId = $state<string | null>(null);
-	selectedNodeId = $state<string | null>(null);
+	selectedNodeIds = $state<string[]>([]);
+
+	// Estado do Box Selection
+	isBoxSelecting = $state(false);
+	selectionBoxStart = $state({ x: 0, y: 0 });
+	selectionBoxEnd = $state({ x: 0, y: 0 });
+
+	// Estado do Autosave
+	saveStatus = $state<'idle' | 'saving' | 'saved'>('idle');
+	private saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Referência do DOM para cálculos
 	canvasElement: HTMLDivElement | null = $state(null);
@@ -96,7 +105,7 @@ export class WorkspaceState {
 			}
 
 			// Tenta referenciar a partir do nó selecionado ou o mais próximo do centro
-			let refNode = this.selectedNodeId ? this.nodes[this.selectedNodeId] : null;
+			let refNode = this.selectedNodeIds.length > 0 ? this.nodes[this.selectedNodeIds[this.selectedNodeIds.length - 1]] : null;
 			if (!refNode) {
 				let minD = Infinity;
 				Object.values(this.nodes).forEach((n) => {
@@ -128,7 +137,7 @@ export class WorkspaceState {
 			text: 'Olá! Escreva o diálogo aqui.'
 		};
 
-		this.selectedNodeId = id;
+		this.selectedNodeIds = [id];
 	};
 
 	deleteNode = (id: string) => {
@@ -139,7 +148,9 @@ export class WorkspaceState {
 		});
 		delete newNodes[id];
 		this.nodes = newNodes;
-		if (this.selectedNodeId === id) this.selectedNodeId = null;
+		if (this.selectedNodeIds.includes(id)) {
+			this.selectedNodeIds = this.selectedNodeIds.filter(sid => sid !== id);
+		}
 		if (this.activePlayNodeId === id) this.activePlayNodeId = null;
 	};
 
@@ -198,13 +209,21 @@ export class WorkspaceState {
 
 	// Manipuladores de Eventos do Canvas
 	handleCanvasMouseDown = (e: MouseEvent) => {
-		// Evita que o clique do botão do meio ative a rolagem automática padrão do browser
 		if (e.button === 1) {
 			e.preventDefault();
-		}
-		if (e.button === 0 || e.button === 1) {
 			this.isPanning = true;
 			this.dragStartOffset = { x: e.clientX - this.pan.x, y: e.clientY - this.pan.y };
+		}
+		if (e.button === 0) {
+			if (!e.shiftKey && !e.ctrlKey) {
+				this.selectedNodeIds = [];
+			}
+			this.isBoxSelecting = true;
+			if (this.canvasElement) {
+				const rect = this.canvasElement.getBoundingClientRect();
+				this.selectionBoxStart = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+				this.selectionBoxEnd = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+			}
 		}
 	};
 
@@ -233,15 +252,68 @@ export class WorkspaceState {
 		}
 	};
 
+	findPath = (startId: string, targetId: string): string[] | null => {
+		const visited = new Set<string>();
+		const queue: { id: string; path: string[] }[] = [{ id: startId, path: [startId] }];
+		while (queue.length > 0) {
+			const { id, path } = queue.shift()!;
+			if (id === targetId) return path;
+			visited.add(id);
+			const node = this.nodes[id];
+			if (node && node.nextId && !visited.has(node.nextId)) {
+				queue.push({ id: node.nextId, path: [...path, node.nextId] });
+			}
+		}
+		return null;
+	};
+
+	getConnectedChain = (startId: string): string[] => {
+		const chain: string[] = [];
+		let currentId: string | undefined = startId;
+		const visited = new Set<string>();
+		while (currentId && this.nodes[currentId] && !visited.has(currentId)) {
+			chain.push(currentId);
+			visited.add(currentId);
+			currentId = this.nodes[currentId].nextId;
+		}
+		return chain;
+	};
+
 	handleNodeHeaderMouseDown = (e: MouseEvent, id: string) => {
 		if (e.button !== 0) return; // Apenas arraste com botão esquerdo
 		e.stopPropagation();
 		e.preventDefault();
+		
+		if (e.ctrlKey || e.metaKey) {
+			if (this.selectedNodeIds.includes(id)) {
+				this.selectedNodeIds = this.selectedNodeIds.filter(sid => sid !== id);
+			} else {
+				this.selectedNodeIds = [...this.selectedNodeIds, id];
+			}
+		} else if (e.shiftKey) {
+			const lastSelected = this.selectedNodeIds[this.selectedNodeIds.length - 1];
+			if (lastSelected && lastSelected !== id && this.nodes[lastSelected]) {
+				const path = this.findPath(lastSelected, id);
+				if (path) {
+					const newSelection = new Set(this.selectedNodeIds);
+					path.forEach(p => newSelection.add(p));
+					this.selectedNodeIds = Array.from(newSelection);
+				} else {
+					const chain = this.getConnectedChain(lastSelected);
+					const newSelection = new Set([...this.selectedNodeIds, ...chain, id]);
+					this.selectedNodeIds = Array.from(newSelection);
+				}
+			} else {
+				this.selectedNodeIds = [...this.selectedNodeIds, id];
+			}
+		} else {
+			if (!this.selectedNodeIds.includes(id)) {
+				this.selectedNodeIds = [id];
+			}
+		}
+
 		this.draggedNodeId = id;
-		this.dragStartOffset = {
-			x: e.clientX - this.nodes[id].x * this.zoom,
-			y: e.clientY - this.nodes[id].y * this.zoom
-		};
+		this.dragStartOffset = { x: e.clientX, y: e.clientY };
 	};
 
 	handleOutputPortMouseDown = (e: MouseEvent, id: string) => {
@@ -269,16 +341,35 @@ export class WorkspaceState {
 			return;
 		}
 
+		if (this.isBoxSelecting && this.canvasElement) {
+			const rect = this.canvasElement.getBoundingClientRect();
+			this.selectionBoxEnd = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+		}
+
 		if (this.isPanning) {
 			this.pan = { x: e.clientX - this.dragStartOffset.x, y: e.clientY - this.dragStartOffset.y };
 		}
 
 		if (this.draggedNodeId) {
-			const node = this.nodes[this.draggedNodeId];
-			if (node) {
-				node.x = (e.clientX - this.dragStartOffset.x) / this.zoom;
-				node.y = (e.clientY - this.dragStartOffset.y) / this.zoom;
+			const dx = e.clientX - this.dragStartOffset.x;
+			const dy = e.clientY - this.dragStartOffset.y;
+			
+			if (this.selectedNodeIds.includes(this.draggedNodeId)) {
+				for (const sid of this.selectedNodeIds) {
+					const node = this.nodes[sid];
+					if (node) {
+						node.x += dx / this.zoom;
+						node.y += dy / this.zoom;
+					}
+				}
+			} else {
+				const node = this.nodes[this.draggedNodeId];
+				if (node) {
+					node.x += dx / this.zoom;
+					node.y += dy / this.zoom;
+				}
 			}
+			this.dragStartOffset = { x: e.clientX, y: e.clientY };
 		}
 
 		if (this.connectingFromId && this.canvasElement) {
@@ -292,6 +383,30 @@ export class WorkspaceState {
 		if (this.resizingColumn) {
 			this.resizingColumn = null;
 			return;
+		}
+
+		if (this.isBoxSelecting) {
+			this.isBoxSelecting = false;
+			const minX = Math.min(this.selectionBoxStart.x, this.selectionBoxEnd.x);
+			const maxX = Math.max(this.selectionBoxStart.x, this.selectionBoxEnd.x);
+			const minY = Math.min(this.selectionBoxStart.y, this.selectionBoxEnd.y);
+			const maxY = Math.max(this.selectionBoxStart.y, this.selectionBoxEnd.y);
+
+			if (maxX - minX > 5 || maxY - minY > 5) {
+				const cMinX = (minX - this.pan.x) / this.zoom;
+				const cMaxX = (maxX - this.pan.x) / this.zoom;
+				const cMinY = (minY - this.pan.y) / this.zoom;
+				const cMaxY = (maxY - this.pan.y) / this.zoom;
+
+				const newlySelected = Object.values(this.nodes).filter(n => {
+					const w = n.type === 'start' ? 128 : NODE_WIDTH;
+					const h = n.type === 'start' ? 40 : NODE_HEIGHT;
+					return !(n.x > cMaxX || n.x + w < cMinX || n.y > cMaxY || n.y + h < cMinY);
+				}).map(n => n.id);
+
+				const uniqueSelection = new Set([...this.selectedNodeIds, ...newlySelected]);
+				this.selectedNodeIds = Array.from(uniqueSelection);
+			}
 		}
 
 		this.isPanning = false;
@@ -323,7 +438,7 @@ export class WorkspaceState {
 	};
 
 	// Métodos de Persistência / Import / Export
-	saveProject = () => {
+	saveProject = (silent = false) => {
 		this.project.nodes = { ...this.nodes };
 		const savedProjects = JSON.parse(localStorage.getItem('saved-projects-v2') || '[]');
 		const idx = savedProjects.findIndex((p: Project) => p.id === this.project.id);
@@ -331,7 +446,24 @@ export class WorkspaceState {
 		if (idx >= 0) savedProjects[idx] = updated;
 		else savedProjects.push(updated);
 		localStorage.setItem('saved-projects-v2', JSON.stringify(savedProjects));
-		alert('Projeto salvo localmente com sucesso!');
+		
+		if (!silent) {
+			alert('Projeto salvo localmente com sucesso!');
+		}
+
+		this.saveStatus = 'saved';
+		if (this.saveTimeout) clearTimeout(this.saveTimeout);
+		this.saveTimeout = setTimeout(() => {
+			if (this.saveStatus === 'saved') this.saveStatus = 'idle';
+		}, 2000);
+	};
+
+	debouncedSave = () => {
+		this.saveStatus = 'saving';
+		if (this.saveTimeout) clearTimeout(this.saveTimeout);
+		this.saveTimeout = setTimeout(() => {
+			this.saveProject(true);
+		}, 1500);
 	};
 
 	exportJson = () => {

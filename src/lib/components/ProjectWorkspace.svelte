@@ -21,8 +21,15 @@
 
 	// Cria e gerencia o estado usando a classe WorkspaceState extraída
 	const workspace = new WorkspaceState(project);
+	let isMounted = false;
+
+	$effect(() => {
+		JSON.stringify(workspace.nodes);
+		if (isMounted) workspace.debouncedSave();
+	});
 
 	onMount(() => {
+		isMounted = true;
 		// Ajusta a tela inicialmente após a montagem do DOM
 		setTimeout(() => {
 			workspace.fitView();
@@ -64,6 +71,11 @@
 			>
 				<Download class="size-4" /> Exportar JSON
 			</button>
+			{#if workspace.saveStatus === 'saving'}
+				<span class="text-xs text-base-content/50 font-medium ml-2">Salvando...</span>
+			{:else if workspace.saveStatus === 'saved'}
+				<span class="text-xs text-success font-medium ml-2">Salvo</span>
+			{/if}
 			<button
 				onclick={() => workspace.saveProject()}
 				class="btn btn-sm btn-primary gap-1.5 font-bold shadow-lg shadow-primary/10"
@@ -190,12 +202,14 @@
 						onmousedown={(e) => {
 							if (e.button === 1) return;
 							e.stopPropagation();
-							workspace.selectedNodeId = node.id;
+							if (!e.shiftKey && !e.ctrlKey && !workspace.selectedNodeIds.includes(node.id)) {
+								workspace.selectedNodeIds = [node.id];
+							}
 						}}
 						class="absolute select-none flex flex-col group/node transition-shadow {workspace.activePlayNodeId ===
 						node.id
 							? 'ring-2 ring-success/50'
-							: ''} {workspace.selectedNodeId === node.id ? 'ring-2 ring-primary' : ''}"
+							: ''} {workspace.selectedNodeIds.includes(node.id) ? 'ring-2 ring-primary' : ''}"
 						class:w-32={node.type === 'start'}
 						class:w-72={node.type === 'boh'}
 						class:node-transition={workspace.draggedNodeId !== node.id}
@@ -308,6 +322,14 @@
 				{/each}
 			</div>
 
+			<!-- Box Selection Overlay (fora do container transformado) -->
+			{#if workspace.isBoxSelecting}
+				<div
+					class="absolute border-2 border-primary bg-primary/10 pointer-events-none z-40 rounded-sm"
+					style="left: {Math.min(workspace.selectionBoxStart.x, workspace.selectionBoxEnd.x)}px; top: {Math.min(workspace.selectionBoxStart.y, workspace.selectionBoxEnd.y)}px; width: {Math.abs(workspace.selectionBoxEnd.x - workspace.selectionBoxStart.x)}px; height: {Math.abs(workspace.selectionBoxEnd.y - workspace.selectionBoxStart.y)}px;"
+				></div>
+			{/if}
+
 			<!-- Barra Flutuante de Controles do Canvas -->
 			<div
 				class="absolute bottom-4 right-4 flex items-center gap-1.5 z-10 bg-base-100/90 backdrop-blur-md p-1.5 rounded-lg border border-base-200 shadow-lg select-none"
@@ -367,7 +389,7 @@
 				nodes={workspace.nodes}
 				bind:terminalWidth={workspace.terminalWidth}
 				bind:activePlayNodeId={workspace.activePlayNodeId}
-				selectedNodeId={workspace.selectedNodeId}
+				selectedNodeIds={workspace.selectedNodeIds}
 			/>
 		</aside>
 	</div>
