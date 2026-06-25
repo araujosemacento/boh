@@ -10,7 +10,9 @@
 		Trash2,
 		Zap,
 		Maximize,
-		Sparkles
+		Sparkles,
+		Tag,
+		ChevronDown
 	} from '@lucide/svelte';
 	import type { Project } from '../types';
 	import DialoguePlayer from './DialoguePlayer.svelte';
@@ -25,6 +27,7 @@
 
 	$effect(() => {
 		JSON.stringify(workspace.nodes);
+		JSON.stringify(project); // Watch for metadata changes
 		if (isMounted) workspace.debouncedSave();
 	});
 
@@ -65,8 +68,43 @@
 			</button>
 			<div class="divider divider-horizontal my-3"></div>
 			<div class="flex items-center gap-2">
-				<span class="font-bold text-lg">{project.name}</span>
-				<span class="badge badge-primary badge-sm font-semibold">{project.tag}</span>
+				<input 
+					bind:value={project.name} 
+					class="font-bold text-lg bg-transparent border border-transparent hover:border-base-300 hover:bg-base-200/50 focus:border-primary focus:bg-base-200 focus:ring-2 focus:ring-primary/20 outline-none rounded px-1.5 py-0.5 -ml-1.5 transition-all w-48 cursor-pointer focus:cursor-text"
+					title="Editar nome"
+					placeholder="Nome do Projeto"
+				/>
+				
+				<div class="relative flex items-center">
+					<Tag class="absolute left-1.5 size-3 text-primary opacity-80 pointer-events-none" />
+					<input 
+						bind:value={project.tag}
+						class="badge badge-primary badge-sm font-semibold bg-primary/10 border border-transparent hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20 text-primary outline-none rounded-md pl-6 pr-2 py-0.5 transition-all w-28 cursor-pointer focus:cursor-text"
+						title="Editar tag"
+						placeholder="Tag"
+					/>
+				</div>
+
+				<div class="dropdown">
+					<div tabindex="0" role="button" class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-primary transition-colors" title="Editar Metadados">
+						<ChevronDown class="size-4" />
+					</div>
+					<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+					<div tabindex="0" class="dropdown-content z-100 p-4 shadow-xl shadow-base-300/50 bg-base-100 rounded-xl w-72 border border-base-200 mt-2 flex flex-col gap-3 cursor-default">
+						<div class="form-control">
+							<label class="label py-1 px-0" for="proj-id">
+								<span class="label-text text-[11px] font-bold text-base-content/70">ID do Projeto</span>
+							</label>
+							<input id="proj-id" bind:value={project.id} class="input input-sm input-bordered font-mono text-[11px] bg-base-200 focus:bg-base-100 transition-colors w-full" placeholder="id-do-projeto" />
+						</div>
+						<div class="form-control">
+							<label class="label py-1 px-0" for="proj-desc">
+								<span class="label-text text-[11px] font-bold text-base-content/70">Descrição</span>
+							</label>
+							<textarea id="proj-desc" bind:value={project.description} class="textarea textarea-bordered textarea-sm text-[11px] leading-relaxed bg-base-200 focus:bg-base-100 transition-colors h-20 resize-none w-full" placeholder="Descrição curta do projeto..."></textarea>
+						</div>
+					</div>
+				</div>
 			</div>
 		</div>
 		<div class="flex items-center gap-2">
