@@ -17,6 +17,7 @@ export class WorkspaceState {
 	pan = $state({ x: 0, y: 0 });
 	zoom = $state(1);
 	isPanning = $state(false);
+	isSpaceDown = $state(false);
 
 	// Estado do arraste de nós
 	draggedNodeId = $state<string | null>(null);
@@ -211,10 +212,11 @@ export class WorkspaceState {
 
 	// Manipuladores de Eventos do Canvas
 	handleCanvasMouseDown = (e: MouseEvent) => {
-		if (e.button === 1) {
+		if (e.button === 1 || (e.button === 0 && this.isSpaceDown)) {
 			e.preventDefault();
 			this.isPanning = true;
 			this.dragStartOffset = { x: e.clientX - this.pan.x, y: e.clientY - this.pan.y };
+			return; // Stop here so we don't trigger box selection
 		}
 		if (e.button === 0) {
 			if (!e.shiftKey && !e.ctrlKey) {

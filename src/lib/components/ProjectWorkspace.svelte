@@ -37,6 +37,17 @@
 	});
 </script>
 
+<svelte:window 
+	onkeydown={(e) => {
+		const target = e.target as HTMLElement;
+		if (target.closest('input') || target.closest('textarea') || target.closest('select')) return;
+		if (e.key === ' ') workspace.isSpaceDown = true;
+	}}
+	onkeyup={(e) => {
+		if (e.key === ' ') workspace.isSpaceDown = false;
+	}}
+/>
+
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	class="h-screen flex flex-col bg-base-300 select-none overflow-hidden text-base-content"

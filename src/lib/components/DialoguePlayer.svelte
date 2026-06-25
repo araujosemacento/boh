@@ -8,11 +8,13 @@
 	let {
 		nodes,
 		terminalWidth = $bindable(480),
-		selectedNodeIds = []
+		selectedNodeIds = [],
+		activePlayNodeId = $bindable(null)
 	}: {
 		nodes: Record<string, DialogueNode>;
 		terminalWidth?: number;
 		selectedNodeIds?: string[];
+		activePlayNodeId?: string | null;
 	} = $props();
 
 	// Expressões fiéis ao Boh.py original
@@ -49,6 +51,8 @@
 	let typingInterval: ReturnType<typeof setInterval> | null = null;
 	let nextNodeTimeout: ReturnType<typeof setTimeout> | null = null;
 	let isTyping = $state(false);
+	
+	let isHovered = $state(false);
 
 	let prevSelectedNodeIds = $state<string>('');
 	let playbackSequence = $state<string[]>([]);
@@ -255,6 +259,8 @@
 
 		const node = nodes[nodeId];
 		if (!node) return;
+		
+		activePlayNodeId = nodeId;
 
 		const exprList = bohExpressions[node.expression] ?? bohExpressions.idle;
 
@@ -361,6 +367,7 @@
 		currentFace = choice(bohExpressions.idle);
 		systemMessage = null;
 		errorMessage = null;
+		activePlayNodeId = null;
 	};
 
 	const finishPlayback = () => {
@@ -369,6 +376,7 @@
 		statusState = 'finished';
 		systemMessage = '[Execução finalizada.]';
 		currentFace = choice(bohExpressions.idle);
+		activePlayNodeId = null;
 	};
 
 	const navigateBack = () => {
@@ -435,6 +443,8 @@
 			e.preventDefault();
 			navigateForward();
 		} else if (e.key === ' ') {
+			// Only play/pause if hovering over the player or focus is inside the player
+			if (!isHovered && !target.closest('.player-container')) return;
 			e.preventDefault();
 			togglePlayPause();
 		}
@@ -455,6 +465,12 @@
 </script>
 
 <!-- Painel de Título -->
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div 
+	class="player-container flex flex-col h-full w-full"
+	onmouseenter={() => isHovered = true}
+	onmouseleave={() => isHovered = false}
+>
 <div class="p-4 border-b border-base-200 flex items-center justify-between shrink-0">
 	<div>
 		<h3 class="text-sm font-bold tracking-wider text-base-content/60 uppercase">Simulação</h3>
@@ -598,6 +614,11 @@
 		{/if}
 	</div>
 </div>
+</div>
+
+{#if false}
+	<span class="hidden">{activePlayNodeId}</span>
+{/if}
 
 <style>
 	/* Cursor piscante da barra do balão */
